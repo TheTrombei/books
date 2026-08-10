@@ -214,7 +214,7 @@ function updateShelfLabels() {
     });
 }
 
-// --- RENDERIZADO DE LIBROS (CON LECTURA DESDE GITHUB SI DB ESTÁ VACÍA) ---
+// --- RENDERIZADO DE LIBROS ---
 function loadTextureAsync(url) {
     return new Promise((resolve) => {
         if (!url) return resolve(null);
@@ -233,7 +233,6 @@ async function renderBooks() {
 
     booksData = await getAllBooksFromDB();
 
-    // Si no hay datos en IndexedDB local, intenta cargar data/books.json desde GitHub
     if (booksData.length === 0) {
         try {
             const response = await fetch('data/books.json');
@@ -305,7 +304,7 @@ async function renderBooks() {
     }
 }
 
-// --- INTERACCIÓN TOUCH/POINTER EVENTOS ---
+// --- INTERACCIÓN POINTER EVENTS ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -376,6 +375,7 @@ document.getElementById('btn-next-shelf').addEventListener('pointerdown', (e) =>
     navigateShelf(1);
 });
 
+// ENCUADRE DE CÁMARA ADAPTATIVO AL ENFOCAR UNA ESTANTERÍA
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
     currentShelfIndex = shelfGroup.userData.id;
@@ -384,10 +384,14 @@ function focusShelf(shelfGroup) {
     document.getElementById('btn-rename-shelf').classList.remove('hidden');
     document.getElementById('shelf-title-display').innerText = shelfNames[shelfGroup.userData.id];
 
+    const isPortrait = window.innerHeight > window.innerWidth;
+    // Si la pantalla es vertical (móvil), alejamos la cámara a z: 8.5 para que quepa toda la repisa
+    const targetZ = isPortrait ? 8.5 : 5.6;
+
     gsap.to(camera.position, {
         x: shelfGroup.userData.targetX,
         y: shelfGroup.userData.targetY,
-        z: 5.6,
+        z: targetZ,
         duration: 1.2,
         ease: 'power2.inOut'
     });
