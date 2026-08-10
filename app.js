@@ -121,7 +121,7 @@ let isFlipped = false;
 const defaultCamPos = { x: 0, y: 3.6, z: 15.5 };
 camera.position.set(defaultCamPos.x, defaultCamPos.y, defaultCamPos.z);
 
-// --- CARTELES DE TEXTO PARA NOMBRES ---
+// --- CARTELES DE TEXTO ---
 function createShelfLabelTexture(text) {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -145,7 +145,7 @@ function createShelfLabelTexture(text) {
     return tex;
 }
 
-// --- CONSTRUCCIÓN DE MUEBLES (5 NIVELES HASTA 20 LIBROS) ---
+// --- CONSTRUCCIÓN DE MUEBLES ---
 function createBookshelf(xPos, index) {
     const group = new THREE.Group();
     const width = 5.6, height = 7.0, depth = 0.85;
@@ -233,20 +233,21 @@ async function renderBooks() {
         const bookHeight = 1.0;
         const bookCoverWidth = 0.7;
 
-        const geometry = new THREE.BoxGeometry(bookCoverWidth, bookHeight, spineThickness);
+        // BoxGeometry: X=Ancho Lomo, Y=Altura, Z=Ancho Portada
+        const geometry = new THREE.BoxGeometry(spineThickness, bookHeight, bookCoverWidth);
 
         const coverTex = await loadTextureAsync(data.coverImg);
         const spineTex = await loadTextureAsync(data.spineImg);
 
         // Mapeo de Caras de Three.js:
-        // [0] Derecha (x+), [1] Izquierda (x-), [2] Arriba (y+), [3] Abajo (y-), [4] Portada (z+), [5] Lomo (z-)
+        // [0] Derecha, [1] Lomo (Izquierda, x-), [2] Arriba, [3] Abajo, [4] Portada (Frente, z+), [5] Trasera
         const materials = [
-            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Lado derecho
-            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Lado izquierdo
+            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Derecha
+            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // LOMO
             new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas arriba
             new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas abajo
-            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // Portada (Frontal)
-            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 })   // Lomo (Posterior)
+            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // PORTADA
+            new THREE.MeshStandardMaterial({ color: 0x111111 })  // Lado posterior
         ];
 
         const bookMesh = new THREE.Mesh(geometry, materials);
@@ -261,12 +262,14 @@ async function renderBooks() {
         const worldZ = 0.1;
 
         bookMesh.position.set(worldX, worldY, worldZ);
+        // Orientación por defecto: Lomo apuntando al frente hacia la cámara
+        bookMesh.rotation.y = Math.PI / 2;
         bookMesh.castShadow = true;
 
         bookMesh.userData = {
             ...data,
             homePos: { x: worldX, y: worldY, z: worldZ },
-            homeRot: { x: 0, y: 0, z: 0 }
+            homeRot: { x: 0, y: Math.PI / 2, z: 0 }
         };
 
         scene.add(bookMesh);
@@ -350,9 +353,10 @@ function inspectBook(bookMesh) {
         ease: 'power2.out'
     });
 
+    // En inspección inicia mostrando el lomo frontalmente
     gsap.to(bookMesh.rotation, {
         x: camera.rotation.x,
-        y: camera.rotation.y,
+        y: camera.rotation.y + Math.PI / 2,
         z: camera.rotation.z,
         duration: 0.9
     });
@@ -362,13 +366,13 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-// --- ROTACIÓN EXACTA A 90 GRADOS (PORTADA Y LOMO) ---
+// --- ROTACIÓN 180 GRADOS (LOMO VS PORTADA) ---
 document.getElementById('btn-flip-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
     
-    // Rota 90° para alternar entre la cara del lomo y la cara de la portada frontal
-    const targetY = isFlipped ? (camera.rotation.y + Math.PI / 2) : camera.rotation.y;
+    // Alterna 180° entre la cara del lomo y la cara de la portada
+    const targetY = camera.rotation.y + (isFlipped ? 0 : Math.PI / 2);
 
     gsap.to(currentInspectedBook.rotation, {
         y: targetY,
