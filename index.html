@@ -17,10 +17,10 @@
                 <h1 id="shelf-title-display">Biblioteca Virtual 3D</h1>
                 <button id="btn-rename-shelf" class="btn-icon hidden" title="Renombrar esta estantería">✏️</button>
             </div>
-            <p id="shelf-subtitle">Desliza o usa las flechas para explorar las estanterías</p>
+            <p id="shelf-subtitle">Usa las flechas o toca una estantería</p>
         </header>
 
-        <!-- Flechas de navegación para pantallas pequeñas -->
+        <!-- Flechas Navegación Móvil -->
         <div id="nav-arrows">
             <button id="btn-prev-shelf" class="btn-nav">‹</button>
             <button id="btn-next-shelf" class="btn-nav">›</button>
@@ -28,6 +28,9 @@
 
         <div id="controls">
             <button id="btn-reset-cam" class="btn hidden">← Vista General</button>
+            <button id="btn-export" class="btn btn-secondary">💾 Exportar</button>
+            <button id="btn-import-trigger" class="btn btn-secondary">📥 Importar</button>
+            <input type="file" id="input-import-json" accept=".json" class="hidden">
             <button id="btn-add-book" class="btn">+ Agregar Libro</button>
         </div>
     </div>
