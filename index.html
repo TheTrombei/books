@@ -26,14 +26,14 @@
         </div>
     </div>
 
-    <!-- Inspector / Tarjeta de Libro al Tomarlo -->
+    <!-- Inspector de Libro al Tomarlo -->
     <div id="book-info-card" class="card-info hidden">
         <h2 id="card-title">Título del Libro</h2>
         <p id="card-author">Autor</p>
         <div class="card-actions">
-            <button id="btn-flip-book" class="btn btn-secondary">🔄 Giro Portada/Lomo</button>
+            <button id="btn-flip-book" class="btn btn-secondary">🔄 Rotar Portada/Lomo</button>
             <button id="btn-delete-book" class="btn btn-danger">Eliminar Libro</button>
-            <button id="btn-close-inspect" class="btn btn-secondary">Dejar Libro</button>
+            <button id="btn-close-inspect" class="btn btn-secondary">Regresar a Repisa</button>
         </div>
     </div>
 
@@ -49,11 +49,7 @@
                     <input type="text" id="input-author" required placeholder="Ej. Gabriel García Márquez">
                 </label>
                 <label>Estantería:
-                    <select id="select-shelf">
-                        <option value="0">Estantería 1</option>
-                        <option value="1">Estantería 2</option>
-                        <option value="2">Estantería 3</option>
-                    </select>
+                    <select id="select-shelf"></select>
                 </label>
                 <label>Repisa (Nivel):
                     <select id="select-level">
@@ -63,7 +59,7 @@
                         <option value="3">Repisa 4 (Inferior)</option>
                     </select>
                 </label>
-                <label>Foto del Lomo (Ajustará el grosor automático):
+                <label>Foto del Lomo (Ajusta el grosor automáticamente):
                     <input type="file" id="input-spine-file" accept="image/*" required>
                 </label>
                 <label>Foto de la Portada:
