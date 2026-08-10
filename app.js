@@ -1,7 +1,7 @@
-// --- CONFIGURACIÓN DE ESCENA Y LUZ ---
+// --- ESCENA Y CÁMARA ---
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0807);
+scene.background = new THREE.Color(0x231810);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -10,57 +10,57 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
 
-// Iluminación
-const ambientLight = new THREE.AmbientLight(0xfff0dd, 0.65);
+// Iluminación cálida de ambiente y foco principal
+const ambientLight = new THREE.AmbientLight(0xffebd2, 0.85);
 scene.add(ambientLight);
 
-const mainLight = new THREE.SpotLight(0xffdfb3, 1.4);
-mainLight.position.set(0, 14, 12);
-mainLight.angle = Math.PI / 3;
-mainLight.penumbra = 0.4;
-mainLight.castShadow = true;
-scene.add(mainLight);
+const spotLight = new THREE.SpotLight(0xfff5e6, 1.2);
+spotLight.position.set(0, 12, 14);
+spotLight.angle = Math.PI / 3;
+spotLight.penumbra = 0.5;
+spotLight.castShadow = true;
+scene.add(spotLight);
 
-// --- PARED DE FONDO Y MATERIALES MEJORADOS ---
-// Textura Procedimental Madera
-function createWoodTexture() {
+// --- FONDO Y TEXTURA DE MADERA ---
+function generateWoodTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = '#3a2012';
+    // Base de madera cálida
+    ctx.fillStyle = '#6e3c1b';
     ctx.fillRect(0, 0, 512, 512);
 
-    for (let i = 0; i < 600; i++) {
-        ctx.fillStyle = `rgba(20, 10, 5, ${Math.random() * 0.15})`;
-        ctx.fillRect(Math.random() * 512, 0, Math.random() * 4 + 1, 512);
+    // Vetas de madera
+    for (let i = 0; i < 400; i++) {
+        ctx.fillStyle = `rgba(45, 20, 8, ${Math.random() * 0.25})`;
+        ctx.fillRect(Math.random() * 512, 0, Math.random() * 6 + 1, 512);
     }
-    return new THREE.CanvasTexture(canvas);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 3);
+    tex.needsUpdate = true;
+    return tex;
 }
 
-const woodTexture = createWoodTexture();
-woodTexture.wrapS = THREE.RepeatWrapping;
-woodTexture.wrapT = THREE.RepeatWrapping;
-woodTexture.repeat.set(1, 4);
-
 const WOOD_MAT = new THREE.MeshStandardMaterial({
-    map: woodTexture,
-    roughness: 0.45,
-    metalness: 0.1,
-    color: 0x52301a
+    map: generateWoodTexture(),
+    roughness: 0.5,
+    metalness: 0.05
 });
 
-// Pared del fondo
+// Pared de fondo con tono cálido
 const wallGeo = new THREE.PlaneGeometry(35, 20);
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x181310, roughness: 0.9 });
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x362316, roughness: 0.9 });
 const wallMesh = new THREE.Mesh(wallGeo, wallMat);
 wallMesh.position.set(0, 5, -1.2);
 scene.add(wallMesh);
 
-// --- DATOS Y ESTANTERÍAS ---
-let shelfNames = JSON.parse(localStorage.getItem('my_3d_shelf_names')) || ["Estantería Izquierda", "Estantería Central", "Estantería Derecha"];
-let booksData = JSON.parse(localStorage.getItem('my_3d_books_v3')) || [];
+// --- ESTADO LOCAL Y REPOSITORIO DE DATOS ---
+let shelfNames = JSON.parse(localStorage.getItem('my_3d_shelf_names_v4')) || ["Estantería 1", "Estantería 2", "Estantería 3"];
+let booksData = JSON.parse(localStorage.getItem('my_3d_books_v4')) || [];
 
 const shelfGroups = [];
 const bookMeshes = [];
@@ -69,15 +69,15 @@ let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-const defaultCamPos = { x: 0, y: 3.5, z: 12.5 };
+const defaultCamPos = { x: 0, y: 3.2, z: 12.0 };
 camera.position.set(defaultCamPos.x, defaultCamPos.y, defaultCamPos.z);
 
-// --- CONSTRUCCIÓN DE MUEBLES ---
+// --- CONSTRUCCIÓN DE ESTANTERÍAS ---
 function createBookshelf(xPos, index) {
     const group = new THREE.Group();
-    const width = 3.8, height = 5.4, depth = 0.85;
+    const width = 3.8, height = 5.2, depth = 0.8;
 
-    // Fondo Mueble
+    // Marco posterior
     const backGeo = new THREE.BoxGeometry(width, height, 0.08);
     const backMesh = new THREE.Mesh(backGeo, WOOD_MAT);
     backMesh.position.set(0, height / 2, -depth / 2);
@@ -91,9 +91,9 @@ function createBookshelf(xPos, index) {
     rightSide.position.set(width / 2 - 0.06, height / 2, 0);
     group.add(leftSide, rightSide);
 
-    // Repisas
+    // Repisas (4 Niveles)
     const shelfGeo = new THREE.BoxGeometry(width, 0.1, depth);
-    const levelsY = [0.15, 1.45, 2.75, 4.05, 5.35];
+    const levelsY = [0.15, 1.4, 2.65, 3.9, 5.15];
     levelsY.forEach(y => {
         const shelf = new THREE.Mesh(shelfGeo, WOOD_MAT);
         shelf.position.set(0, y, 0);
@@ -103,7 +103,7 @@ function createBookshelf(xPos, index) {
     });
 
     group.position.set(xPos, 0, 0);
-    group.userData = { id: index, targetX: xPos, targetY: 2.75 };
+    group.userData = { id: index, targetX: xPos, targetY: 2.65 };
     scene.add(group);
     shelfGroups.push(group);
 }
@@ -115,12 +115,11 @@ function initShelves() {
     updateShelfDropdownOptions();
 }
 
-// --- RENDERIZADO DE LIBROS CON GROSOR DINÁMICO ---
+// --- RENDERIZADO DE LIBROS CON GROSOR CALCULADO Y POSICIONAMIENTO ---
 function renderBooks() {
     bookMeshes.forEach(b => scene.remove(b));
     bookMeshes.length = 0;
 
-    // Agrupar por estantería y nivel para acumular posiciones X reales
     const shelfTrackers = {};
 
     booksData.forEach((data, index) => {
@@ -128,48 +127,45 @@ function renderBooks() {
         const lIdx = data.levelIndex || 0;
         const key = `${sIdx}_${lIdx}`;
 
-        if (!shelfTrackers[key]) shelfTrackers[key] = -1.6; // Inicio margen izquierdo del estante
+        if (!shelfTrackers[key]) shelfTrackers[key] = -1.65; // Margen inicial en el estante
 
-        const spineThickness = data.spineThickness || 0.12; // Grosor dinámico calculado por el lomo
+        const spineThickness = data.spineThickness || 0.12;
         const bookHeight = 0.95;
-        const bookCoverWidth = 0.68;
+        const bookCoverWidth = 0.65;
 
-        // BoxGeometry: X=Grosor Lomo, Y=Altura, Z=Ancho Portada
-        const geometry = new THREE.BoxGeometry(spineThickness, bookHeight, bookCoverWidth);
+        // BoxGeometry: X=Ancho Portada, Y=Altura, Z=Grosor Lomo
+        const geometry = new THREE.BoxGeometry(bookCoverWidth, bookHeight, spineThickness);
 
         const textureLoader = new THREE.TextureLoader();
         const materials = [
-            // Lomo (Cara frontal según nuestra orientación)
+            data.coverImg ? new THREE.MeshStandardMaterial({ map: textureLoader.load(data.coverImg) }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // Portada
+            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Contraportada
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Arriba (Hojas)
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Abajo
+            // Lomo (Alineado hacia el frente)
             data.spineImg ? new THREE.MeshStandardMaterial({ map: textureLoader.load(data.spineImg) }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
-            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Atrás
-            new THREE.MeshStandardMaterial({ color: 0xeee8aa }), // Arriba (Hojas)
-            new THREE.MeshStandardMaterial({ color: 0xeee8aa }), // Abajo
-            // Portada
-            data.coverImg ? new THREE.MeshStandardMaterial({ map: textureLoader.load(data.coverImg) }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
-            new THREE.MeshStandardMaterial({ color: 0x111111 })  // Contraportada
+            new THREE.MeshStandardMaterial({ color: 0x111111 })  // Lado posterior
         ];
 
         const bookMesh = new THREE.Mesh(geometry, materials);
         const shelfGroup = shelfGroups[sIdx];
-        const levelY = [0.68, 1.98, 3.28, 4.58][lIdx];
+        const levelY = [0.65, 1.9, 3.15, 4.4][lIdx];
 
-        // Ubicación en el estante
         const currentX = shelfTrackers[key] + (spineThickness / 2);
-        shelfTrackers[key] += spineThickness + 0.02; // Siguiente posición con pequeño espacio entre libros
+        shelfTrackers[key] += spineThickness + 0.03; // Espaciado entre libros
 
         const worldX = shelfGroup.position.x + currentX;
         const worldY = levelY;
-        const worldZ = 0.05;
+        const worldZ = 0.1;
 
         bookMesh.position.set(worldX, worldY, worldZ);
-        bookMesh.rotation.y = Math.PI / 2; // Mostrar el lomo hacia el frente de la cámara
         bookMesh.castShadow = true;
 
-        bookMesh.userData = { 
-            ...data, 
-            arrayIndex: index, 
+        bookMesh.userData = {
+            ...data,
+            arrayIndex: index,
             homePos: { x: worldX, y: worldY, z: worldZ },
-            homeRot: { x: 0, y: Math.PI / 2, z: 0 }
+            homeRot: { x: 0, y: 0, z: 0 }
         };
 
         scene.add(bookMesh);
@@ -177,7 +173,7 @@ function renderBooks() {
     });
 }
 
-// --- INTERACCIÓN Y CÁMARA (GSAP) ---
+// --- INTERACCIÓN RAYCASTER Y CÁMARA ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -189,14 +185,14 @@ window.addEventListener('click', (e) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    // 1. Clic en libro para tomarlo
+    // 1. Clic en Libro
     const bookHits = raycaster.intersectObjects(bookMeshes);
     if (bookHits.length > 0) {
         inspectBook(bookHits[0].object);
         return;
     }
 
-    // 2. Clic en estantería para acercarse
+    // 2. Clic en Estantería
     if (!currentSelectedShelf && !currentInspectedBook) {
         const shelfHits = raycaster.intersectObjects(shelfGroups.flatMap(g => g.children));
         if (shelfHits.length > 0) {
@@ -207,7 +203,6 @@ window.addEventListener('click', (e) => {
     }
 });
 
-// Acercar Estantería
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
     document.getElementById('btn-reset-cam').classList.remove('hidden');
@@ -217,13 +212,12 @@ function focusShelf(shelfGroup) {
     gsap.to(camera.position, {
         x: shelfGroup.userData.targetX,
         y: shelfGroup.userData.targetY,
-        z: 4.8,
-        duration: 1.4,
+        z: 4.6,
+        duration: 1.3,
         ease: 'power2.inOut'
     });
 }
 
-// Volver a Vista General
 document.getElementById('btn-reset-cam').addEventListener('click', () => {
     if (currentInspectedBook) returnBookHome();
     currentSelectedShelf = null;
@@ -235,65 +229,60 @@ document.getElementById('btn-reset-cam').addEventListener('click', () => {
         x: defaultCamPos.x,
         y: defaultCamPos.y,
         z: defaultCamPos.z,
-        duration: 1.4,
+        duration: 1.3,
         ease: 'power2.inOut'
     });
 });
 
-// --- ACCIÓN: TOMAR LIBRO Y VER EN GRANDE ---
+// --- CENTRADO EXACTO DEL LIBRO AL TOMARLO ---
 function inspectBook(bookMesh) {
     if (currentInspectedBook) returnBookHome();
     currentInspectedBook = bookMesh;
     isFlipped = false;
 
-    // Calcular punto frente a la cámara
-    const targetPos = new THREE.Vector3();
-    camera.getWorldDirection(targetPos);
-    targetPos.multiplyScalar(2.2).add(camera.position);
+    // Posicionamiento 3D exactamente al centro frente a la cámara actual
+    const targetVector = new THREE.Vector3(0, 0, -2.0); // 2 unidades por delante
+    targetVector.applyMatrix4(camera.matrixWorld);
 
-    // Animación de tomar el libro y llevarlo al centro
     gsap.to(bookMesh.position, {
-        x: targetPos.x,
-        y: targetPos.y,
-        z: targetPos.z,
-        duration: 1,
-        ease: 'back.out(1.2)'
+        x: targetVector.x,
+        y: targetVector.y,
+        z: targetVector.z,
+        duration: 0.9,
+        ease: 'power2.out'
     });
 
     gsap.to(bookMesh.rotation, {
-        x: 0,
-        y: camera.rotation.y + Math.PI / 2,
-        z: 0,
-        duration: 1
+        x: camera.rotation.x,
+        y: camera.rotation.y,
+        z: camera.rotation.z,
+        duration: 0.9
     });
 
-    // Mostrar interfaz de inspección
     document.getElementById('card-title').innerText = bookMesh.userData.title;
     document.getElementById('card-author').innerText = `Autor: ${bookMesh.userData.author}`;
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-// Girar Libro para ver Portada o Lomo
 document.getElementById('btn-flip-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
-    const targetRotY = camera.rotation.y + (isFlipped ? 0 : Math.PI / 2);
+    const offset = isFlipped ? Math.PI / 2 : 0;
 
     gsap.to(currentInspectedBook.rotation, {
-        y: targetRotY,
-        duration: 0.8,
+        y: camera.rotation.y + offset,
+        duration: 0.7,
         ease: 'power2.inOut'
     });
 });
 
-// Dejar Libro
 function returnBookHome() {
     if (!currentInspectedBook) return;
     const home = currentInspectedBook.userData.homePos;
     const rot = currentInspectedBook.userData.homeRot;
 
-    gsap.to(currentInspectedBook.position, { x: home.x, y: home.y, z: home.z, duration: 0.9, ease: 'power2.inOut' });
-    gsap.to(currentInspectedBook.rotation, { x: rot.x, y: rot.y, z: rot.z, duration: 0.9 });
+    gsap.to(currentInspectedBook.position, { x: home.x, y: home.y, z: home.z, duration: 0.8, ease: 'power2.inOut' });
+    gsap.to(currentInspectedBook.rotation, { x: rot.x, y: rot.y, z: rot.z, duration: 0.8 });
 
     currentInspectedBook = null;
     document.getElementById('book-info-card').classList.add('hidden');
@@ -305,10 +294,10 @@ document.getElementById('btn-close-inspect').addEventListener('click', returnBoo
 document.getElementById('btn-rename-shelf').addEventListener('click', () => {
     if (!currentSelectedShelf) return;
     const sId = currentSelectedShelf.userData.id;
-    const newName = prompt("Ingresa el nuevo nombre para esta estantería:", shelfNames[sId]);
+    const newName = prompt("Nombre de la estantería:", shelfNames[sId]);
     if (newName && newName.trim() !== "") {
         shelfNames[sId] = newName.trim();
-        localStorage.setItem('my_3d_shelf_names', JSON.stringify(shelfNames));
+        localStorage.setItem('my_3d_shelf_names_v4', JSON.stringify(shelfNames));
         document.getElementById('shelf-title-display').innerText = shelfNames[sId];
         updateShelfDropdownOptions();
     }
@@ -325,7 +314,7 @@ function updateShelfDropdownOptions() {
     });
 }
 
-// --- PROCESAMIENTO DE IMÁGENES Y GROSOR DEL LOMO ---
+// --- PROCESAMIENTO ASÍNCRONO DE IMAGEN Y CÁLCULO DE GROSOR DEL LOMO ---
 function processSpineImage(file) {
     return new Promise((resolve) => {
         if (!file) resolve({ base64: null, thickness: 0.12 });
@@ -333,12 +322,9 @@ function processSpineImage(file) {
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                // Relación de aspecto (Ancho / Alto)
                 const aspect = img.width / img.height;
-                // Escalar respecto a la altura estándar del libro (0.95)
                 let calculatedThickness = 0.95 * aspect;
-                // Límites razonables para evitar distorsiones excesivas
-                calculatedThickness = Math.max(0.05, Math.min(0.35, calculatedThickness));
+                calculatedThickness = Math.max(0.06, Math.min(0.30, calculatedThickness));
                 resolve({ base64: e.target.result, thickness: calculatedThickness });
             };
             img.src = e.target.result;
@@ -356,7 +342,6 @@ const readFileAsBase64 = (file) => {
     });
 };
 
-// Formulario Agregar Libro
 document.getElementById('form-book').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -377,29 +362,26 @@ document.getElementById('form-book').addEventListener('submit', async (e) => {
     };
 
     booksData.push(newBook);
-    localStorage.setItem('my_3d_books_v3', JSON.stringify(booksData));
+    localStorage.setItem('my_3d_books_v4', JSON.stringify(booksData));
 
     renderBooks();
     document.getElementById('modal-add-book').classList.add('hidden');
     document.getElementById('form-book').reset();
 });
 
-// Eliminar Libro
 document.getElementById('btn-delete-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     const idx = currentInspectedBook.userData.arrayIndex;
     booksData.splice(idx, 1);
-    localStorage.setItem('my_3d_books_v3', JSON.stringify(booksData));
+    localStorage.setItem('my_3d_books_v4', JSON.stringify(booksData));
     document.getElementById('book-info-card').classList.add('hidden');
     currentInspectedBook = null;
     renderBooks();
 });
 
-// Modales UI
 document.getElementById('btn-add-book').addEventListener('click', () => document.getElementById('modal-add-book').classList.remove('hidden'));
 document.getElementById('btn-cancel').addEventListener('click', () => document.getElementById('modal-add-book').classList.add('hidden'));
 
-// Bucle Render & Resize
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
