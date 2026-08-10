@@ -5,17 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Biblioteca Virtual 3D</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Three.js y GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 <body>
     <div id="canvas-container"></div>
 
-    <!-- UI Overlay -->
     <div id="ui-container">
         <header>
-            <h1 id="shelf-title-display">Biblioteca Virtual 3D</h1>
+            <div class="header-title-row">
+                <h1 id="shelf-title-display">Biblioteca Virtual 3D</h1>
+                <button id="btn-rename-shelf" class="btn-icon hidden" title="Renombrar esta estantería">✏️</button>
+            </div>
             <p id="shelf-subtitle">Haz clic en una estantería para acercarte</p>
         </header>
 
@@ -25,14 +26,18 @@
         </div>
     </div>
 
-    <!-- Modal Libro Seleccionado -->
+    <!-- Inspector / Tarjeta de Libro al Tomarlo -->
     <div id="book-info-card" class="card-info hidden">
-        <h3 id="card-title">Título del Libro</h3>
+        <h2 id="card-title">Título del Libro</h2>
         <p id="card-author">Autor</p>
-        <button id="btn-delete-book" class="btn btn-danger">Eliminar Libro</button>
+        <div class="card-actions">
+            <button id="btn-flip-book" class="btn btn-secondary">🔄 Giro Portada/Lomo</button>
+            <button id="btn-delete-book" class="btn btn-danger">Eliminar Libro</button>
+            <button id="btn-close-inspect" class="btn btn-secondary">Dejar Libro</button>
+        </div>
     </div>
 
-    <!-- Modal para Agregar Libro -->
+    <!-- Modal Agregar Libro -->
     <div id="modal-add-book" class="modal hidden">
         <div class="modal-content">
             <h2>Agregar Nuevo Libro</h2>
@@ -45,12 +50,12 @@
                 </label>
                 <label>Estantería:
                     <select id="select-shelf">
-                        <option value="0">Estantería Izquierda</option>
-                        <option value="1">Estantería Central</option>
-                        <option value="2">Estantería Derecha</option>
+                        <option value="0">Estantería 1</option>
+                        <option value="1">Estantería 2</option>
+                        <option value="2">Estantería 3</option>
                     </select>
                 </label>
-                <label>Repisa (Estante):
+                <label>Repisa (Nivel):
                     <select id="select-level">
                         <option value="0">Repisa 1 (Superior)</option>
                         <option value="1">Repisa 2</option>
@@ -58,14 +63,14 @@
                         <option value="3">Repisa 4 (Inferior)</option>
                     </select>
                 </label>
-                <label>Foto de la Portada (Desde tu PC):
+                <label>Foto del Lomo (Ajustará el grosor automático):
+                    <input type="file" id="input-spine-file" accept="image/*" required>
+                </label>
+                <label>Foto de la Portada:
                     <input type="file" id="input-cover-file" accept="image/*" required>
                 </label>
-                <label>Foto del Lomo (Desde tu PC - Opcional):
-                    <input type="file" id="input-spine-file" accept="image/*">
-                </label>
                 <div class="modal-buttons">
-                    <button type="submit" class="btn">Guardar en Librería</button>
+                    <button type="submit" class="btn">Guardar Libro</button>
                     <button type="button" id="btn-cancel" class="btn btn-secondary">Cancelar</button>
                 </div>
             </form>
