@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mi Biblioteca Virtual 3D</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -17,11 +17,17 @@
                 <h1 id="shelf-title-display">Biblioteca Virtual 3D</h1>
                 <button id="btn-rename-shelf" class="btn-icon hidden" title="Renombrar esta estantería">✏️</button>
             </div>
-            <p id="shelf-subtitle">Haz clic en una estantería para acercarte</p>
+            <p id="shelf-subtitle">Desliza o usa las flechas para explorar las estanterías</p>
         </header>
 
+        <!-- Flechas de navegación para pantallas pequeñas -->
+        <div id="nav-arrows">
+            <button id="btn-prev-shelf" class="btn-nav">‹</button>
+            <button id="btn-next-shelf" class="btn-nav">›</button>
+        </div>
+
         <div id="controls">
-            <button id="btn-reset-cam" class="btn hidden">← Volver a Vista General</button>
+            <button id="btn-reset-cam" class="btn hidden">← Vista General</button>
             <button id="btn-add-book" class="btn">+ Agregar Libro</button>
         </div>
     </div>
@@ -60,7 +66,7 @@
                         <option value="4">Repisa 5 (Inferior)</option>
                     </select>
                 </label>
-                <label>Foto del Lomo (Calcula el grosor dinámico):
+                <label>Foto del Lomo:
                     <input type="file" id="input-spine-file" accept="image/*" required>
                 </label>
                 <label>Foto de la Portada:
