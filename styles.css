@@ -9,7 +9,7 @@ body, html {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #1a110b;
+    background-color: #120b07;
     color: #ffffff;
 }
 
@@ -37,7 +37,7 @@ body, html {
 }
 
 header {
-    background: rgba(36, 22, 13, 0.92);
+    background: rgba(30, 18, 10, 0.92);
     backdrop-filter: blur(10px);
     border: 1px solid #c8963e;
     padding: 15px 25px;
