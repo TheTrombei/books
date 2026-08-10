@@ -9,7 +9,7 @@ body, html {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #0d0d0d;
+    background-color: #0b0908;
     color: #ffffff;
 }
 
@@ -37,13 +37,20 @@ body, html {
 }
 
 header {
-    background: rgba(20, 15, 10, 0.85);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 215, 0, 0.2);
+    background: rgba(18, 13, 9, 0.88);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(184, 134, 11, 0.3);
     padding: 15px 25px;
     border-radius: 12px;
     display: inline-block;
     align-self: flex-start;
+    pointer-events: auto;
+}
+
+.header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 header h1 {
@@ -51,9 +58,24 @@ header h1 {
     color: #f3e5ab;
 }
 
+.btn-icon {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 header p {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     color: #a39b8b;
+    margin-top: 4px;
 }
 
 #controls {
@@ -64,64 +86,76 @@ header p {
 }
 
 .btn {
-    background: #8b5a2b;
+    background: #734322;
     color: #fff;
-    border: none;
+    border: 1px solid #9e6033;
     padding: 12px 22px;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
 .btn:hover {
-    background: #a66d3b;
+    background: #8c522b;
     transform: translateY(-2px);
 }
 
 .btn-secondary {
-    background: #4a4a4a;
+    background: #3a3430;
+    border-color: #544c47;
 }
 
 .btn-secondary:hover {
-    background: #616161;
+    background: #4a433e;
 }
 
 .btn-danger {
-    background: #a93226;
-    margin-top: 10px;
+    background: #8b2525;
+    border-color: #ab3232;
 }
 
 .btn-danger:hover {
-    background: #cb4335;
+    background: #a32f2f;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* Card Info de Libro */
+/* Card Info Inspección */
 .card-info {
     position: absolute;
-    bottom: 30px;
-    left: 30px;
+    bottom: 35px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 15;
-    background: rgba(26, 20, 16, 0.92);
-    border: 1px solid #8b5a2b;
-    padding: 20px;
-    border-radius: 10px;
-    min-width: 250px;
+    background: rgba(18, 14, 11, 0.94);
+    border: 1px solid #b8860b;
+    padding: 20px 30px;
+    border-radius: 14px;
+    text-align: center;
+    min-width: 320px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
 }
 
-.card-info h3 {
+.card-info h2 {
     color: #f3e5ab;
-    margin-bottom: 5px;
+    font-size: 1.3rem;
+    margin-bottom: 4px;
 }
 
 .card-info p {
-    color: #d1c7b7;
+    color: #c7bcae;
     font-size: 0.95rem;
+    margin-bottom: 15px;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
 }
 
 /* Modal */
@@ -131,7 +165,7 @@ header p {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.82);
     z-index: 20;
     display: flex;
     justify-content: center;
@@ -139,11 +173,11 @@ header p {
 }
 
 .modal-content {
-    background: #1c1815;
-    border: 1px solid #5c3a21;
+    background: #181310;
+    border: 1px solid #734322;
     padding: 30px;
     border-radius: 12px;
-    width: 380px;
+    width: 400px;
 }
 
 .modal-content h2 {
@@ -169,7 +203,7 @@ header p {
     padding: 9px;
     border-radius: 6px;
     border: 1px solid #4a3b30;
-    background: #0d0b0a;
+    background: #0d0a08;
     color: white;
 }
 
