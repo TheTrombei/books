@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Biblioteca Virtual 3D</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Three.js y GSAP vía CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-container">
+        <header>
+            <h1>Biblioteca Virtual 3D</h1>
+            <p>Selecciona una estantería para explorar tus libros</p>
+        </header>
+
+        <div id="controls">
+            <button id="btn-reset-cam" class="btn hidden">← Volver a Vista General</button>
+            <button id="btn-add-book" class="btn">+ Agregar Libro</button>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar Libro -->
+    <div id="modal-add-book" class="modal hidden">
+        <div class="modal-content">
+            <h2>Agregar Nuevo Libro</h2>
+            <form id="form-book">
+                <label>Título: <input type="text" id="input-title" required></label>
+                <label>Autor: <input type="text" id="input-author" required></label>
+                <label>Estantería: 
+                    <select id="select-shelf">
+                        <option value="0">Estantería 1</option>
+                        <option value="1">Estantería 2</option>
+                        <option value="2">Estantería 3</option>
+                    </select>
+                </label>
+                <label>URL Imagen Portada: <input type="url" id="input-cover" placeholder="https://..."></label>
+                <label>URL Imagen Lomo: <input type="url" id="input-spine" placeholder="https://..."></label>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn">Guardar</button>
+                    <button type="button" id="btn-cancel" class="btn btn-secondary">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
