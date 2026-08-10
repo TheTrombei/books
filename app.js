@@ -107,7 +107,7 @@ const wallMesh = new THREE.Mesh(wallGeo, wallMat);
 wallMesh.position.set(0, 6, -1.5);
 scene.add(wallMesh);
 
-// --- ESTADO LOCAL Y NAVEGACIÓN ENTRE ESTANTERÍAS ---
+// --- ESTADO LOCAL ---
 let shelfNames = JSON.parse(localStorage.getItem('my_3d_shelf_names_v6')) || ["Estantería 1", "Estantería 2", "Estantería 3"];
 let booksData = [];
 
@@ -115,20 +115,17 @@ const shelfGroups = [];
 const bookMeshes = [];
 const labelMeshes = [];
 
-let currentShelfIndex = 1; // Inicia en la estantería central
+let currentShelfIndex = 1;
 let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-// Calcula distancia de cámara para encuadrar correctamente en Android e iPhone
 function updateCameraFOV() {
     const aspect = window.innerWidth / window.innerHeight;
     if (aspect < 1.0) {
-        // Modo Pantalla Vertical Móvil
-        camera.fov = 68;
+        camera.fov = 65;
         camera.position.set(0, 3.8, 20.0);
     } else {
-        // Modo Escritorio / Horizontal
         camera.fov = 45;
         camera.position.set(0, 3.6, 15.5);
     }
@@ -289,49 +286,55 @@ async function renderBooks() {
     }
 }
 
-// --- INTERACCIÓN TOUCH/CLICK Y GESTOS DE DESLIZAMIENTO (SWIPE) ---
+// --- MANEJO DE EVENTOS TÁCTILES EXCLUSIVAMENTE SOBRE EL LIENZO 3D ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-let touchStartX = 0;
-let touchStartY = 0;
+let startX = 0;
+let startY = 0;
 
-window.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
+const domCanvas = renderer.domElement;
+
+domCanvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }
 }, { passive: true });
 
-window.addEventListener('touchend', (e) => {
-    if (e.target.closest('#ui-container') || e.target.closest('.modal') || e.target.closest('.card-info')) return;
+domCanvas.addEventListener('touchend', (e) => {
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
 
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
 
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = touchEndY - touchStartY;
+    const diffX = endX - startX;
+    const diffY = endY - startY;
+    const dist = Math.hypot(diffX, diffY);
 
-    // Si el usuario hace swipe horizontal de más de 40px
-    if (Math.abs(deltaX) > 40 && Math.abs(deltaY) < 60 && !currentInspectedBook) {
-        if (deltaX < 0) {
-            navigateShelf(1);  // Deslizar izquierda -> Siguiente estantería
+    // Si se movió más de 35px en horizontal -> Gesto Swipe
+    if (dist > 35 && Math.abs(diffX) > Math.abs(diffY) && !currentInspectedBook) {
+        if (diffX < 0) {
+            navigateShelf(1);  // Swipe a la izquierda -> Siguiente estantería
         } else {
-            navigateShelf(-1); // Deslizar derecha -> Anterior estantería
+            navigateShelf(-1); // Swipe a la derecha -> Anterior estantería
         }
         return;
     }
 
-    // Si es un toque puntual
-    handleTap(touchEndX, touchEndY);
+    // Si fue un toque rápido sin arrastrar -> Selección de objeto 3D
+    if (dist < 15) {
+        process3DInteraction(endX, endY);
+    }
 }, { passive: true });
 
-window.addEventListener('click', (e) => {
-    // Evitar duplicar evento si viene de pantalla táctil
+domCanvas.addEventListener('click', (e) => {
+    // Para clics normales con mouse en PC
     if (e.pointerType === 'touch') return;
-    if (e.target.closest('#ui-container') || e.target.closest('.modal') || e.target.closest('.card-info')) return;
-    handleTap(e.clientX, e.clientY);
+    process3DInteraction(e.clientX, e.clientY);
 });
 
-function handleTap(clientX, clientY) {
+function process3DInteraction(clientX, clientY) {
     mouse.x = (clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
@@ -353,7 +356,7 @@ function handleTap(clientX, clientY) {
     }
 }
 
-// Navegación por botones laterales o gestos móviles
+// Navegación por flechas UI o gestos
 function navigateShelf(direction) {
     if (currentInspectedBook) return;
 
@@ -364,8 +367,16 @@ function navigateShelf(direction) {
     focusShelf(shelfGroups[currentShelfIndex]);
 }
 
-document.getElementById('btn-prev-shelf').addEventListener('click', () => navigateShelf(-1));
-document.getElementById('btn-next-shelf').addEventListener('click', () => navigateShelf(1));
+// Asignación explícita de eventos a los botones UI
+document.getElementById('btn-prev-shelf').onclick = (e) => {
+    e.stopPropagation();
+    navigateShelf(-1);
+};
+
+document.getElementById('btn-next-shelf').onclick = (e) => {
+    e.stopPropagation();
+    navigateShelf(1);
+};
 
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
@@ -384,7 +395,8 @@ function focusShelf(shelfGroup) {
     });
 }
 
-document.getElementById('btn-reset-cam').addEventListener('click', () => {
+document.getElementById('btn-reset-cam').onclick = (e) => {
+    e.stopPropagation();
     if (currentInspectedBook) returnBookHome();
     currentSelectedShelf = null;
     document.getElementById('btn-reset-cam').classList.add('hidden');
@@ -399,9 +411,9 @@ document.getElementById('btn-reset-cam').addEventListener('click', () => {
         duration: 1.2,
         ease: 'power2.inOut'
     });
-});
+};
 
-// --- CENTRADO E INSPECCIÓN DEL LIBRO ---
+// --- CENTRADO E INSPECCIÓN ---
 function inspectBook(bookMesh) {
     if (currentInspectedBook) returnBookHome();
     currentInspectedBook = bookMesh;
@@ -430,7 +442,8 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-document.getElementById('btn-flip-book').addEventListener('click', () => {
+document.getElementById('btn-flip-book').onclick = (e) => {
+    e.stopPropagation();
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
     const targetY = camera.rotation.y + (isFlipped ? -Math.PI / 2 : 0);
@@ -440,7 +453,7 @@ document.getElementById('btn-flip-book').addEventListener('click', () => {
         duration: 0.8,
         ease: 'power2.inOut'
     });
-});
+};
 
 function returnBookHome() {
     if (!currentInspectedBook) return;
@@ -454,10 +467,14 @@ function returnBookHome() {
     document.getElementById('book-info-card').classList.add('hidden');
 }
 
-document.getElementById('btn-close-inspect').addEventListener('click', returnBookHome);
+document.getElementById('btn-close-inspect').onclick = (e) => {
+    e.stopPropagation();
+    returnBookHome();
+};
 
 // --- RENOMBRAR ESTANTERÍAS ---
-document.getElementById('btn-rename-shelf').addEventListener('click', () => {
+document.getElementById('btn-rename-shelf').onclick = (e) => {
+    e.stopPropagation();
     if (!currentSelectedShelf) return;
     const sId = currentSelectedShelf.userData.id;
     const newName = prompt("Nuevo nombre para esta estantería:", shelfNames[sId]);
@@ -468,7 +485,7 @@ document.getElementById('btn-rename-shelf').addEventListener('click', () => {
         updateShelfLabels();
         updateShelfDropdownOptions();
     }
-});
+};
 
 function updateShelfDropdownOptions() {
     const select = document.getElementById('select-shelf');
@@ -509,7 +526,7 @@ const readFileAsBase64 = (file) => {
     });
 };
 
-document.getElementById('form-book').addEventListener('submit', async (e) => {
+document.getElementById('form-book').onsubmit = async (e) => {
     e.preventDefault();
     const btnSubmit = document.getElementById('btn-submit-form');
     btnSubmit.disabled = true;
@@ -539,10 +556,10 @@ document.getElementById('form-book').addEventListener('submit', async (e) => {
     btnSubmit.innerText = "Guardar Libro";
     document.getElementById('modal-add-book').classList.add('hidden');
     document.getElementById('form-book').reset();
-});
+};
 
-// --- ELIMINAR LIBRO DESDE INDEXEDDB ---
-document.getElementById('btn-delete-book').addEventListener('click', async () => {
+document.getElementById('btn-delete-book').onclick = async (e) => {
+    e.stopPropagation();
     if (!currentInspectedBook) return;
     const bookId = currentInspectedBook.userData.id;
 
@@ -553,10 +570,17 @@ document.getElementById('btn-delete-book').addEventListener('click', async () =>
     currentInspectedBook = null;
 
     await renderBooks();
-});
+};
 
-document.getElementById('btn-add-book').addEventListener('click', () => document.getElementById('modal-add-book').classList.remove('hidden'));
-document.getElementById('btn-cancel').addEventListener('click', () => document.getElementById('modal-add-book').classList.add('hidden'));
+document.getElementById('btn-add-book').onclick = (e) => {
+    e.stopPropagation();
+    document.getElementById('modal-add-book').classList.remove('hidden');
+};
+
+document.getElementById('btn-cancel').onclick = (e) => {
+    e.stopPropagation();
+    document.getElementById('modal-add-book').classList.add('hidden');
+};
 
 function animate() {
     requestAnimationFrame(animate);
