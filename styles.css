@@ -3,6 +3,7 @@
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body, html {
@@ -11,6 +12,7 @@ body, html {
     overflow: hidden;
     background-color: #120b07;
     color: #ffffff;
+    touch-action: manipulation;
 }
 
 #canvas-container {
@@ -33,29 +35,30 @@ body, html {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 25px;
+    padding: 15px;
 }
 
 header {
     background: rgba(30, 18, 10, 0.92);
     backdrop-filter: blur(10px);
     border: 1px solid #c8963e;
-    padding: 15px 25px;
+    padding: 12px 18px;
     border-radius: 12px;
     display: inline-block;
     align-self: flex-start;
     pointer-events: auto;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    max-width: calc(100vw - 30px);
 }
 
 .header-title-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
 header h1 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: #fce8bd;
 }
 
@@ -67,41 +70,34 @@ header h1 {
     font-size: 1rem;
     padding: 4px 8px;
     border-radius: 6px;
-    transition: all 0.2s;
-}
-
-.btn-icon:hover {
-    background: #c8963e;
 }
 
 header p {
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     color: #d1b894;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 #controls {
     pointer-events: auto;
     display: flex;
-    gap: 15px;
+    gap: 10px;
     align-self: flex-end;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .btn {
     background: #8c5023;
     color: #fff;
     border: 1px solid #c8963e;
-    padding: 12px 22px;
+    padding: 10px 16px;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    font-size: 0.9rem;
     transition: all 0.2s ease;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-}
-
-.btn:hover {
-    background: #a6602d;
-    transform: translateY(-2px);
 }
 
 .btn-secondary {
@@ -109,56 +105,52 @@ header p {
     border-color: #736254;
 }
 
-.btn-secondary:hover {
-    background: #5f5045;
-}
-
 .btn-danger {
     background: #9c2828;
     border-color: #d14141;
-}
-
-.btn-danger:hover {
-    background: #bd3333;
 }
 
 .hidden {
     display: none !important;
 }
 
+/* Tarjeta de Inspección */
 .card-info {
     position: absolute;
-    bottom: 35px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 15;
     background: rgba(28, 17, 10, 0.95);
     border: 2px solid #c8963e;
-    padding: 20px 30px;
+    padding: 15px 20px;
     border-radius: 14px;
     text-align: center;
-    min-width: 340px;
+    width: calc(100vw - 40px);
+    max-width: 380px;
     box-shadow: 0 10px 35px rgba(0,0,0,0.85);
 }
 
 .card-info h2 {
     color: #fce8bd;
-    font-size: 1.35rem;
-    margin-bottom: 4px;
+    font-size: 1.15rem;
+    margin-bottom: 2px;
 }
 
 .card-info p {
     color: #d1b894;
-    font-size: 0.95rem;
-    margin-bottom: 15px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
 }
 
 .card-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
+/* Modal Responsivo */
 .modal {
     position: absolute;
     top: 0;
@@ -170,46 +162,59 @@ header p {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 15px;
 }
 
 .modal-content {
     background: #24160d;
     border: 1px solid #c8963e;
-    padding: 30px;
+    padding: 20px;
     border-radius: 12px;
-    width: 400px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal-content h2 {
     color: #fce8bd;
-    margin-bottom: 15px;
+    font-size: 1.2rem;
+    margin-bottom: 12px;
 }
 
 .modal-content form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .modal-content label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #d1b894;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
 }
 
 .modal-content input, .modal-content select {
-    padding: 9px;
+    padding: 8px;
     border-radius: 6px;
     border: 1px solid #5c4228;
     background: #120b06;
     color: white;
+    font-size: 0.9rem;
 }
 
 .modal-buttons {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 15px;
+    margin-top: 10px;
+}
+
+/* Ajustes adicionales móviles */
+@media (max-width: 600px) {
+    header h1 { font-size: 1.1rem; }
+    .btn { padding: 8px 12px; font-size: 0.82rem; }
+    .card-actions .btn { flex: 1 1 45%; }
 }
