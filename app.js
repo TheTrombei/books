@@ -49,7 +49,7 @@ function deleteBookFromDB(id) {
     });
 }
 
-// --- ESCENA Y CÁMARA ---
+// --- ESCENA Y CÁMARA ADAPTATIVA ---
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x160e08);
@@ -57,6 +57,7 @@ scene.background = new THREE.Color(0x160e08);
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
@@ -100,13 +101,13 @@ const WOOD_MAT = new THREE.MeshStandardMaterial({
     metalness: 0.05
 });
 
-const wallGeo = new THREE.PlaneGeometry(45, 25);
+const wallGeo = new THREE.PlaneGeometry(55, 30);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x24140a, roughness: 0.9 });
 const wallMesh = new THREE.Mesh(wallGeo, wallMat);
 wallMesh.position.set(0, 6, -1.5);
 scene.add(wallMesh);
 
-// --- ESTADO LOCAL ---
+// --- ESTADO LOCAL Y NAVEGACIÓN ENTRE ESTANTERÍAS ---
 let shelfNames = JSON.parse(localStorage.getItem('my_3d_shelf_names_v6')) || ["Estantería 1", "Estantería 2", "Estantería 3"];
 let booksData = [];
 
@@ -114,12 +115,27 @@ const shelfGroups = [];
 const bookMeshes = [];
 const labelMeshes = [];
 
+let currentShelfIndex = 1; // Inicia en la estantería central
 let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-const defaultCamPos = { x: 0, y: 3.6, z: 15.5 };
-camera.position.set(defaultCamPos.x, defaultCamPos.y, defaultCamPos.z);
+// Calcula distancia de cámara para encuadrar correctamente en Android e iPhone
+function updateCameraFOV() {
+    const aspect = window.innerWidth / window.innerHeight;
+    if (aspect < 1.0) {
+        // Modo Pantalla Vertical Móvil
+        camera.fov = 68;
+        camera.position.set(0, 3.8, 20.0);
+    } else {
+        // Modo Escritorio / Horizontal
+        camera.fov = 45;
+        camera.position.set(0, 3.6, 15.5);
+    }
+    camera.updateProjectionMatrix();
+}
+
+updateCameraFOV();
 
 // --- CARTELES DE TEXTO DE ESTANTERÍA ---
 function createShelfLabelTexture(text) {
@@ -201,7 +217,7 @@ function updateShelfLabels() {
     });
 }
 
-// --- RENDERIZADO DE LIBROS (LOMO VISIBLE EN LA REPISA) ---
+// --- RENDERIZADO DE LIBROS ---
 function loadTextureAsync(url) {
     return new Promise((resolve) => {
         if (!url) return resolve(null);
@@ -233,26 +249,18 @@ async function renderBooks() {
         const bookHeight = 1.0;
         const bookCoverWidth = 0.7;
 
-        // Geometría: X = Grosor del Lomo (Ancho visible frontal), Y = Altura, Z = Profundidad de Portada
         const geometry = new THREE.BoxGeometry(spineThickness, bookHeight, bookCoverWidth);
 
         const coverTex = await loadTextureAsync(data.coverImg);
         const spineTex = await loadTextureAsync(data.spineImg);
 
-        // MAPEO DE CARAS EN THREE.JS:
-        // [0]: Derecha (X+) -> PORTADA
-        // [1]: Izquierda (X-) -> CONTRA PORTADA
-        // [2]: Arriba (Y+) -> PÁGINAS
-        // [3]: Abajo (Y-) -> PÁGINAS
-        // [4]: Frente (Z+) -> LOMO (Orientado al frente de la pantalla por defecto)
-        // [5]: Atrás (Z-) -> INTERIOR
         const materials = [
-            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // PORTADA
-            new THREE.MeshStandardMaterial({ color: 0x222222 }), // CONTRA PORTADA
-            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // PÁGINAS ARRIBA
-            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // PÁGINAS ABAJO
-            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // LOMO
-            new THREE.MeshStandardMaterial({ color: 0x111111 })  // ATRÁS
+            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
+            new THREE.MeshStandardMaterial({ color: 0x222222 }),
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }),
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }),
+            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
+            new THREE.MeshStandardMaterial({ color: 0x111111 })
         ];
 
         const bookMesh = new THREE.Mesh(geometry, materials);
@@ -267,7 +275,6 @@ async function renderBooks() {
         const worldZ = 0.1;
 
         bookMesh.position.set(worldX, worldY, worldZ);
-        // Sin rotación Y: la cara frontal Z+ (LOMO) mira directo hacia afuera
         bookMesh.rotation.set(0, 0, 0);
         bookMesh.castShadow = true;
 
@@ -282,15 +289,51 @@ async function renderBooks() {
     }
 }
 
-// --- INTERACCIÓN Y CÁMARA ---
+// --- INTERACCIÓN TOUCH/CLICK Y GESTOS DE DESLIZAMIENTO (SWIPE) ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-window.addEventListener('click', (e) => {
+let touchStartX = 0;
+let touchStartY = 0;
+
+window.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+window.addEventListener('touchend', (e) => {
     if (e.target.closest('#ui-container') || e.target.closest('.modal') || e.target.closest('.card-info')) return;
 
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+
+    // Si el usuario hace swipe horizontal de más de 40px
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaY) < 60 && !currentInspectedBook) {
+        if (deltaX < 0) {
+            navigateShelf(1);  // Deslizar izquierda -> Siguiente estantería
+        } else {
+            navigateShelf(-1); // Deslizar derecha -> Anterior estantería
+        }
+        return;
+    }
+
+    // Si es un toque puntual
+    handleTap(touchEndX, touchEndY);
+}, { passive: true });
+
+window.addEventListener('click', (e) => {
+    // Evitar duplicar evento si viene de pantalla táctil
+    if (e.pointerType === 'touch') return;
+    if (e.target.closest('#ui-container') || e.target.closest('.modal') || e.target.closest('.card-info')) return;
+    handleTap(e.clientX, e.clientY);
+});
+
+function handleTap(clientX, clientY) {
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
 
@@ -308,10 +351,26 @@ window.addEventListener('click', (e) => {
             if (parent) focusShelf(parent);
         }
     }
-});
+}
+
+// Navegación por botones laterales o gestos móviles
+function navigateShelf(direction) {
+    if (currentInspectedBook) return;
+
+    let targetIdx = currentShelfIndex + direction;
+    targetIdx = Math.max(0, Math.min(2, targetIdx));
+
+    currentShelfIndex = targetIdx;
+    focusShelf(shelfGroups[currentShelfIndex]);
+}
+
+document.getElementById('btn-prev-shelf').addEventListener('click', () => navigateShelf(-1));
+document.getElementById('btn-next-shelf').addEventListener('click', () => navigateShelf(1));
 
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
+    currentShelfIndex = shelfGroup.userData.id;
+
     document.getElementById('btn-reset-cam').classList.remove('hidden');
     document.getElementById('btn-rename-shelf').classList.remove('hidden');
     document.getElementById('shelf-title-display').innerText = shelfNames[shelfGroup.userData.id];
@@ -320,7 +379,7 @@ function focusShelf(shelfGroup) {
         x: shelfGroup.userData.targetX,
         y: shelfGroup.userData.targetY,
         z: 5.6,
-        duration: 1.3,
+        duration: 1.2,
         ease: 'power2.inOut'
     });
 }
@@ -332,11 +391,12 @@ document.getElementById('btn-reset-cam').addEventListener('click', () => {
     document.getElementById('btn-rename-shelf').classList.add('hidden');
     document.getElementById('shelf-title-display').innerText = "Biblioteca Virtual 3D";
 
+    const isPortrait = window.innerHeight > window.innerWidth;
     gsap.to(camera.position, {
-        x: defaultCamPos.x,
-        y: defaultCamPos.y,
-        z: defaultCamPos.z,
-        duration: 1.3,
+        x: 0,
+        y: isPortrait ? 3.8 : 3.6,
+        z: isPortrait ? 20.0 : 15.5,
+        duration: 1.2,
         ease: 'power2.inOut'
     });
 });
@@ -358,7 +418,6 @@ function inspectBook(bookMesh) {
         ease: 'power2.out'
     });
 
-    // En inspección mantiene el lomo hacia ti
     gsap.to(bookMesh.rotation, {
         x: camera.rotation.x,
         y: camera.rotation.y,
@@ -371,12 +430,9 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-// --- ROTACIÓN DE 90° PARA PASAR DEL LOMO A LA PORTADA ---
 document.getElementById('btn-flip-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
-    
-    // Gira -90° (-Math.PI / 2) para enfocar frontalmente la portada (X+)
     const targetY = camera.rotation.y + (isFlipped ? -Math.PI / 2 : 0);
 
     gsap.to(currentInspectedBook.rotation, {
@@ -509,8 +565,8 @@ function animate() {
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    updateCameraFOV();
 });
 
 // Inicialización
