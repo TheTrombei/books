@@ -1,4 +1,4 @@
-// --- BASE DE DATOS INDEXEDDB (SIN LÍMITES DE ESPACIO DE STORAGE) ---
+// --- BASE DE DATOS INDEXEDDB (ALMACENAMIENTO DE ALTA CAPACIDAD) ---
 const DB_NAME = '3DBookshelfDB';
 const DB_VERSION = 1;
 let db = null;
@@ -72,7 +72,7 @@ spotLight.penumbra = 0.5;
 spotLight.castShadow = true;
 scene.add(spotLight);
 
-// --- FONDO Y TEXTURAS DE MADERA CÁLIDA ---
+// --- FONDO Y TEXTURA DE MADERA ---
 function generateWoodTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -121,7 +121,7 @@ let isFlipped = false;
 const defaultCamPos = { x: 0, y: 3.6, z: 15.5 };
 camera.position.set(defaultCamPos.x, defaultCamPos.y, defaultCamPos.z);
 
-// --- CARTELES DE TEXTO PARA NOMBRE DE ESTANTERÍA EN LA VISTA ALEJADA ---
+// --- CARTELES DE TEXTO PARA NOMBRES ---
 function createShelfLabelTexture(text) {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -172,7 +172,6 @@ function createBookshelf(xPos, index) {
         group.add(shelf);
     });
 
-    // Cartel 3D con nombre en la vista general
     const labelGeo = new THREE.PlaneGeometry(3.2, 0.8);
     const labelMat = new THREE.MeshBasicMaterial({ map: createShelfLabelTexture(shelfNames[index]), side: THREE.DoubleSide });
     const labelMesh = new THREE.Mesh(labelGeo, labelMat);
@@ -202,7 +201,7 @@ function updateShelfLabels() {
     });
 }
 
-// --- RENDERIZADO DE LIBROS EN ESCENA ---
+// --- RENDERIZADO ASÍNCRONO DE LIBROS ---
 function loadTextureAsync(url) {
     return new Promise((resolve) => {
         if (!url) return resolve(null);
@@ -212,7 +211,6 @@ function loadTextureAsync(url) {
 }
 
 async function renderBooks() {
-    // Limpieza segura de memoria de Three.js
     bookMeshes.forEach(b => {
         scene.remove(b);
         if (b.geometry) b.geometry.dispose();
@@ -240,13 +238,15 @@ async function renderBooks() {
         const coverTex = await loadTextureAsync(data.coverImg);
         const spineTex = await loadTextureAsync(data.spineImg);
 
+        // Mapeo de Caras de Three.js:
+        // [0] Derecha (x+), [1] Izquierda (x-), [2] Arriba (y+), [3] Abajo (y-), [4] Portada (z+), [5] Lomo (z-)
         const materials = [
-            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
-            new THREE.MeshStandardMaterial({ color: 0x222222 }),
-            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }),
-            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }),
-            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }),
-            new THREE.MeshStandardMaterial({ color: 0x111111 })
+            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Lado derecho
+            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Lado izquierdo
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas arriba
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas abajo
+            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // Portada (Frontal)
+            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 })   // Lomo (Posterior)
         ];
 
         const bookMesh = new THREE.Mesh(geometry, materials);
@@ -333,7 +333,7 @@ document.getElementById('btn-reset-cam').addEventListener('click', () => {
     });
 });
 
-// --- CENTRADO DEL LIBRO AL TOMARLO ---
+// --- CENTRADO E INSPECCIÓN DEL LIBRO ---
 function inspectBook(bookMesh) {
     if (currentInspectedBook) returnBookHome();
     currentInspectedBook = bookMesh;
@@ -362,13 +362,16 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
+// --- ROTACIÓN EXACTA A 90 GRADOS (PORTADA Y LOMO) ---
 document.getElementById('btn-flip-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
-    const offset = isFlipped ? Math.PI / 2 : 0;
+    
+    // Rota 90° para alternar entre la cara del lomo y la cara de la portada frontal
+    const targetY = isFlipped ? (camera.rotation.y + Math.PI / 2) : camera.rotation.y;
 
     gsap.to(currentInspectedBook.rotation, {
-        y: camera.rotation.y + offset,
+        y: targetY,
         duration: 0.7,
         ease: 'power2.inOut'
     });
@@ -388,7 +391,7 @@ function returnBookHome() {
 
 document.getElementById('btn-close-inspect').addEventListener('click', returnBookHome);
 
-// --- RENOMBRAR ESTANTERÍA ---
+// --- RENOMBRAR ESTANTERÍAS ---
 document.getElementById('btn-rename-shelf').addEventListener('click', () => {
     if (!currentSelectedShelf) return;
     const sId = currentSelectedShelf.userData.id;
@@ -413,7 +416,7 @@ function updateShelfDropdownOptions() {
     });
 }
 
-// --- ESCALADO Y PROCESAMIENTO DE IMÁGENES ---
+// --- PROCESAMIENTO DE IMÁGENES ---
 function processSpineImage(file) {
     return new Promise((resolve) => {
         if (!file) resolve({ base64: null, thickness: 0.12 });
@@ -473,7 +476,7 @@ document.getElementById('form-book').addEventListener('submit', async (e) => {
     document.getElementById('form-book').reset();
 });
 
-// --- ELIMINAR LIBRO SEGURO DESDE DB ---
+// --- ELIMINAR LIBRO SEGURO DESDE INDEXEDDB ---
 document.getElementById('btn-delete-book').addEventListener('click', async () => {
     if (!currentInspectedBook) return;
     const bookId = currentInspectedBook.userData.id;
@@ -501,7 +504,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Inicialización asíncrona
+// Inicialización
 (async () => {
     await initDB();
     initShelves();
