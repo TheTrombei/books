@@ -107,7 +107,7 @@ const wallMesh = new THREE.Mesh(wallGeo, wallMat);
 wallMesh.position.set(0, 6, -1.5);
 scene.add(wallMesh);
 
-// --- ESTADO LOCAL ---
+// --- ESTADO Y NAVEGACIÓN ---
 let shelfNames = JSON.parse(localStorage.getItem('my_3d_shelf_names_v6')) || ["Estantería 1", "Estantería 2", "Estantería 3"];
 let booksData = [];
 
@@ -286,55 +286,40 @@ async function renderBooks() {
     }
 }
 
-// --- MANEJO DE EVENTOS TÁCTILES EXCLUSIVAMENTE SOBRE EL LIENZO 3D ---
+// --- GESTIÓN UNIFICADA POINTER EVENTS (TOUCH & MOUSE) ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-let startX = 0;
-let startY = 0;
+let pointerDownX = 0;
+let pointerDownY = 0;
 
-const domCanvas = renderer.domElement;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+    pointerDownX = e.clientX;
+    pointerDownY = e.clientY;
+});
 
-domCanvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-    }
-}, { passive: true });
-
-domCanvas.addEventListener('touchend', (e) => {
-    if (!e.changedTouches || e.changedTouches.length === 0) return;
-
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-
-    const diffX = endX - startX;
-    const diffY = endY - startY;
+renderer.domElement.addEventListener('pointerup', (e) => {
+    const diffX = e.clientX - pointerDownX;
+    const diffY = e.clientY - pointerDownY;
     const dist = Math.hypot(diffX, diffY);
 
-    // Si se movió más de 35px en horizontal -> Gesto Swipe
-    if (dist > 35 && Math.abs(diffX) > Math.abs(diffY) && !currentInspectedBook) {
+    // Gestos Deslizar Horizontal (Swipe)
+    if (dist > 30 && Math.abs(diffX) > Math.abs(diffY) && !currentInspectedBook) {
         if (diffX < 0) {
-            navigateShelf(1);  // Swipe a la izquierda -> Siguiente estantería
+            navigateShelf(1);
         } else {
-            navigateShelf(-1); // Swipe a la derecha -> Anterior estantería
+            navigateShelf(-1);
         }
         return;
     }
 
-    // Si fue un toque rápido sin arrastrar -> Selección de objeto 3D
-    if (dist < 15) {
-        process3DInteraction(endX, endY);
+    // Clic / Toque Puntual
+    if (dist < 10) {
+        process3DSelection(e.clientX, e.clientY);
     }
-}, { passive: true });
-
-domCanvas.addEventListener('click', (e) => {
-    // Para clics normales con mouse en PC
-    if (e.pointerType === 'touch') return;
-    process3DInteraction(e.clientX, e.clientY);
 });
 
-function process3DInteraction(clientX, clientY) {
+function process3DSelection(clientX, clientY) {
     mouse.x = (clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
@@ -356,27 +341,24 @@ function process3DInteraction(clientX, clientY) {
     }
 }
 
-// Navegación por flechas UI o gestos
 function navigateShelf(direction) {
     if (currentInspectedBook) return;
-
     let targetIdx = currentShelfIndex + direction;
     targetIdx = Math.max(0, Math.min(2, targetIdx));
-
     currentShelfIndex = targetIdx;
     focusShelf(shelfGroups[currentShelfIndex]);
 }
 
-// Asignación explícita de eventos a los botones UI
-document.getElementById('btn-prev-shelf').onclick = (e) => {
+// Controles Botones UI
+document.getElementById('btn-prev-shelf').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     navigateShelf(-1);
-};
+});
 
-document.getElementById('btn-next-shelf').onclick = (e) => {
+document.getElementById('btn-next-shelf').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     navigateShelf(1);
-};
+});
 
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
@@ -395,7 +377,7 @@ function focusShelf(shelfGroup) {
     });
 }
 
-document.getElementById('btn-reset-cam').onclick = (e) => {
+document.getElementById('btn-reset-cam').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     if (currentInspectedBook) returnBookHome();
     currentSelectedShelf = null;
@@ -411,7 +393,7 @@ document.getElementById('btn-reset-cam').onclick = (e) => {
         duration: 1.2,
         ease: 'power2.inOut'
     });
-};
+});
 
 // --- CENTRADO E INSPECCIÓN ---
 function inspectBook(bookMesh) {
@@ -442,7 +424,7 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-document.getElementById('btn-flip-book').onclick = (e) => {
+document.getElementById('btn-flip-book').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
@@ -453,7 +435,7 @@ document.getElementById('btn-flip-book').onclick = (e) => {
         duration: 0.8,
         ease: 'power2.inOut'
     });
-};
+});
 
 function returnBookHome() {
     if (!currentInspectedBook) return;
@@ -467,13 +449,52 @@ function returnBookHome() {
     document.getElementById('book-info-card').classList.add('hidden');
 }
 
-document.getElementById('btn-close-inspect').onclick = (e) => {
+document.getElementById('btn-close-inspect').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     returnBookHome();
-};
+});
+
+// --- EXPORTAR E IMPORTAR COLECCIÓN ENTRE DISPOSITIVOS ---
+document.getElementById('btn-export').addEventListener('pointerdown', async (e) => {
+    e.stopPropagation();
+    const allBooks = await getAllBooksFromDB();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allBooks));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "mis_libros_3d.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+});
+
+document.getElementById('btn-import-trigger').addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    document.getElementById('input-import-json').click();
+});
+
+document.getElementById('input-import-json').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const importedBooks = JSON.parse(event.target.result);
+            if (Array.isArray(importedBooks)) {
+                for (const book of importedBooks) {
+                    await saveBookToDB(book);
+                }
+                await renderBooks();
+                alert("¡Colección importada con éxito!");
+            }
+        } catch (err) {
+            alert("El archivo JSON no es válido.");
+        }
+    };
+    reader.readAsText(file);
+});
 
 // --- RENOMBRAR ESTANTERÍAS ---
-document.getElementById('btn-rename-shelf').onclick = (e) => {
+document.getElementById('btn-rename-shelf').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     if (!currentSelectedShelf) return;
     const sId = currentSelectedShelf.userData.id;
@@ -485,7 +506,7 @@ document.getElementById('btn-rename-shelf').onclick = (e) => {
         updateShelfLabels();
         updateShelfDropdownOptions();
     }
-};
+});
 
 function updateShelfDropdownOptions() {
     const select = document.getElementById('select-shelf');
@@ -558,7 +579,7 @@ document.getElementById('form-book').onsubmit = async (e) => {
     document.getElementById('form-book').reset();
 };
 
-document.getElementById('btn-delete-book').onclick = async (e) => {
+document.getElementById('btn-delete-book').addEventListener('pointerdown', async (e) => {
     e.stopPropagation();
     if (!currentInspectedBook) return;
     const bookId = currentInspectedBook.userData.id;
@@ -570,17 +591,17 @@ document.getElementById('btn-delete-book').onclick = async (e) => {
     currentInspectedBook = null;
 
     await renderBooks();
-};
+});
 
-document.getElementById('btn-add-book').onclick = (e) => {
+document.getElementById('btn-add-book').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     document.getElementById('modal-add-book').classList.remove('hidden');
-};
+});
 
-document.getElementById('btn-cancel').onclick = (e) => {
+document.getElementById('btn-cancel').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     document.getElementById('modal-add-book').classList.add('hidden');
-};
+});
 
 function animate() {
     requestAnimationFrame(animate);
