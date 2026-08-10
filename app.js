@@ -233,21 +233,21 @@ async function renderBooks() {
         const bookHeight = 1.0;
         const bookCoverWidth = 0.7;
 
-        // BoxGeometry: X=Ancho Lomo, Y=Altura, Z=Ancho Portada
+        // X = Grosor del Lomo, Y = Altura, Z = Profundidad (Ancho Portada)
         const geometry = new THREE.BoxGeometry(spineThickness, bookHeight, bookCoverWidth);
 
         const coverTex = await loadTextureAsync(data.coverImg);
         const spineTex = await loadTextureAsync(data.spineImg);
 
         // Mapeo de Caras de Three.js:
-        // [0] Derecha, [1] Lomo (Izquierda, x-), [2] Arriba, [3] Abajo, [4] Portada (Frente, z+), [5] Trasera
+        // [0] Derecha, [1] Lomo (Izquierda x-), [2] Arriba, [3] Abajo, [4] Portada (Frente z+), [5] Trasera (Atrás z-)
         const materials = [
             new THREE.MeshStandardMaterial({ color: 0x222222 }), // Derecha
             spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // LOMO
             new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas arriba
             new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas abajo
             coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // PORTADA
-            new THREE.MeshStandardMaterial({ color: 0x111111 })  // Lado posterior
+            new THREE.MeshStandardMaterial({ color: 0x111111 })  // Trasera
         ];
 
         const bookMesh = new THREE.Mesh(geometry, materials);
@@ -262,7 +262,7 @@ async function renderBooks() {
         const worldZ = 0.1;
 
         bookMesh.position.set(worldX, worldY, worldZ);
-        // Orientación por defecto: Lomo apuntando al frente hacia la cámara
+        // Girar 90° para que la cara izquierda (el lomo) quede orientada exactamente hacia el frente
         bookMesh.rotation.y = Math.PI / 2;
         bookMesh.castShadow = true;
 
@@ -353,7 +353,7 @@ function inspectBook(bookMesh) {
         ease: 'power2.out'
     });
 
-    // En inspección inicia mostrando el lomo frontalmente
+    // Mantiene el lomo hacia el frente al ser levantado
     gsap.to(bookMesh.rotation, {
         x: camera.rotation.x,
         y: camera.rotation.y + Math.PI / 2,
@@ -366,17 +366,17 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-// --- ROTACIÓN 180 GRADOS (LOMO VS PORTADA) ---
+// --- ROTACIÓN DE 180° ENTRE LOMO Y PORTADA ---
 document.getElementById('btn-flip-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
     
-    // Alterna 180° entre la cara del lomo y la cara de la portada
+    // Al dar clic alterna 180° completos para mostrar la portada frontal
     const targetY = camera.rotation.y + (isFlipped ? 0 : Math.PI / 2);
 
     gsap.to(currentInspectedBook.rotation, {
         y: targetY,
-        duration: 0.7,
+        duration: 0.8,
         ease: 'power2.inOut'
     });
 });
