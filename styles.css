@@ -9,7 +9,7 @@ body, html {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #0b0908;
+    background-color: #1a110b;
     color: #ffffff;
 }
 
@@ -37,44 +37,46 @@ body, html {
 }
 
 header {
-    background: rgba(18, 13, 9, 0.88);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(184, 134, 11, 0.3);
+    background: rgba(36, 22, 13, 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid #c8963e;
     padding: 15px 25px;
     border-radius: 12px;
     display: inline-block;
     align-self: flex-start;
     pointer-events: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
 .header-title-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 header h1 {
     font-size: 1.5rem;
-    color: #f3e5ab;
+    color: #fce8bd;
 }
 
 .btn-icon {
-    background: transparent;
-    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #c8963e;
+    color: #fff;
     cursor: pointer;
-    font-size: 1.1rem;
-    padding: 2px 5px;
-    border-radius: 4px;
-    transition: background 0.2s;
+    font-size: 1rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
 .btn-icon:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: #c8963e;
 }
 
 header p {
     font-size: 0.88rem;
-    color: #a39b8b;
+    color: #d1b894;
     margin-top: 4px;
 }
 
@@ -86,9 +88,9 @@ header p {
 }
 
 .btn {
-    background: #734322;
+    background: #8c5023;
     color: #fff;
-    border: 1px solid #9e6033;
+    border: 1px solid #c8963e;
     padding: 12px 22px;
     border-radius: 8px;
     cursor: pointer;
@@ -98,56 +100,55 @@ header p {
 }
 
 .btn:hover {
-    background: #8c522b;
+    background: #a6602d;
     transform: translateY(-2px);
 }
 
 .btn-secondary {
-    background: #3a3430;
-    border-color: #544c47;
+    background: #4a3e35;
+    border-color: #736254;
 }
 
 .btn-secondary:hover {
-    background: #4a433e;
+    background: #5f5045;
 }
 
 .btn-danger {
-    background: #8b2525;
-    border-color: #ab3232;
+    background: #9c2828;
+    border-color: #d14141;
 }
 
 .btn-danger:hover {
-    background: #a32f2f;
+    background: #bd3333;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* Card Info Inspección */
 .card-info {
     position: absolute;
     bottom: 35px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 15;
-    background: rgba(18, 14, 11, 0.94);
-    border: 1px solid #b8860b;
+    background: rgba(28, 17, 10, 0.95);
+    border: 2px solid #c8963e;
     padding: 20px 30px;
     border-radius: 14px;
     text-align: center;
-    min-width: 320px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    min-width: 340px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.85);
 }
 
 .card-info h2 {
-    color: #f3e5ab;
-    font-size: 1.3rem;
+    color: #fce8bd;
+    font-size: 1.35rem;
     margin-bottom: 4px;
 }
 
 .card-info p {
-    color: #c7bcae;
+    color: #d1b894;
     font-size: 0.95rem;
     margin-bottom: 15px;
 }
@@ -158,14 +159,13 @@ header p {
     justify-content: center;
 }
 
-/* Modal */
 .modal {
     position: absolute;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.82);
+    background: rgba(0, 0, 0, 0.85);
     z-index: 20;
     display: flex;
     justify-content: center;
@@ -173,15 +173,15 @@ header p {
 }
 
 .modal-content {
-    background: #181310;
-    border: 1px solid #734322;
+    background: #24160d;
+    border: 1px solid #c8963e;
     padding: 30px;
     border-radius: 12px;
     width: 400px;
 }
 
 .modal-content h2 {
-    color: #f3e5ab;
+    color: #fce8bd;
     margin-bottom: 15px;
 }
 
@@ -193,7 +193,7 @@ header p {
 
 .modal-content label {
     font-size: 0.85rem;
-    color: #c7bcae;
+    color: #d1b894;
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -202,8 +202,8 @@ header p {
 .modal-content input, .modal-content select {
     padding: 9px;
     border-radius: 6px;
-    border: 1px solid #4a3b30;
-    background: #0d0a08;
+    border: 1px solid #5c4228;
+    background: #120b06;
     color: white;
 }
 
