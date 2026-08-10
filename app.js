@@ -121,7 +121,7 @@ let isFlipped = false;
 const defaultCamPos = { x: 0, y: 3.6, z: 15.5 };
 camera.position.set(defaultCamPos.x, defaultCamPos.y, defaultCamPos.z);
 
-// --- CARTELES DE TEXTO ---
+// --- CARTELES DE TEXTO DE ESTANTERÍA ---
 function createShelfLabelTexture(text) {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -145,7 +145,7 @@ function createShelfLabelTexture(text) {
     return tex;
 }
 
-// --- CONSTRUCCIÓN DE MUEBLES ---
+// --- CONSTRUCCIÓN DE ESTANTERÍAS ---
 function createBookshelf(xPos, index) {
     const group = new THREE.Group();
     const width = 5.6, height = 7.0, depth = 0.85;
@@ -233,21 +233,22 @@ async function renderBooks() {
         const bookHeight = 1.0;
         const bookCoverWidth = 0.7;
 
-        // X = Grosor del Lomo, Y = Altura, Z = Profundidad (Ancho Portada)
+        // X = Grosor Lomo, Y = Altura, Z = Profundidad Portada
         const geometry = new THREE.BoxGeometry(spineThickness, bookHeight, bookCoverWidth);
 
         const coverTex = await loadTextureAsync(data.coverImg);
         const spineTex = await loadTextureAsync(data.spineImg);
 
-        // Mapeo de Caras de Three.js:
-        // [0] Derecha, [1] Lomo (Izquierda x-), [2] Arriba, [3] Abajo, [4] Portada (Frente z+), [5] Trasera (Atrás z-)
+        // MAPEO CLAVE DE CARAS THREE.JS:
+        // 0: Derecha, 1: Izquierda, 2: Arriba, 3: Abajo,
+        // 4: FRONTAL (Z+) -> LOMO, 5: TRASERA (Z-) -> PORTADA
         const materials = [
-            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Derecha
-            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // LOMO
-            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas arriba
-            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Páginas abajo
-            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // PORTADA
-            new THREE.MeshStandardMaterial({ color: 0x111111 })  // Trasera
+            new THREE.MeshStandardMaterial({ color: 0x222222 }), // Caras laterales
+            new THREE.MeshStandardMaterial({ color: 0x222222 }),
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }), // Hojas
+            new THREE.MeshStandardMaterial({ color: 0xfffdd0 }),
+            spineTex ? new THREE.MeshStandardMaterial({ map: spineTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 }), // LOMO AL FRENTE
+            coverTex ? new THREE.MeshStandardMaterial({ map: coverTex }) : new THREE.MeshStandardMaterial({ color: 0x8b0000 })  // PORTADA ATRÁS
         ];
 
         const bookMesh = new THREE.Mesh(geometry, materials);
@@ -262,14 +263,14 @@ async function renderBooks() {
         const worldZ = 0.1;
 
         bookMesh.position.set(worldX, worldY, worldZ);
-        // Girar 90° para que la cara izquierda (el lomo) quede orientada exactamente hacia el frente
-        bookMesh.rotation.y = Math.PI / 2;
+        // Sin rotación Y: el lomo (cara 4) apunta directo a la cámara
+        bookMesh.rotation.set(0, 0, 0);
         bookMesh.castShadow = true;
 
         bookMesh.userData = {
             ...data,
             homePos: { x: worldX, y: worldY, z: worldZ },
-            homeRot: { x: 0, y: Math.PI / 2, z: 0 }
+            homeRot: { x: 0, y: 0, z: 0 }
         };
 
         scene.add(bookMesh);
@@ -336,7 +337,7 @@ document.getElementById('btn-reset-cam').addEventListener('click', () => {
     });
 });
 
-// --- CENTRADO E INSPECCIÓN DEL LIBRO ---
+// --- CENTRADO DEL LIBRO AL TOMARLO ---
 function inspectBook(bookMesh) {
     if (currentInspectedBook) returnBookHome();
     currentInspectedBook = bookMesh;
@@ -353,10 +354,9 @@ function inspectBook(bookMesh) {
         ease: 'power2.out'
     });
 
-    // Mantiene el lomo hacia el frente al ser levantado
     gsap.to(bookMesh.rotation, {
         x: camera.rotation.x,
-        y: camera.rotation.y + Math.PI / 2,
+        y: camera.rotation.y,
         z: camera.rotation.z,
         duration: 0.9
     });
@@ -366,13 +366,13 @@ function inspectBook(bookMesh) {
     document.getElementById('book-info-card').classList.remove('hidden');
 }
 
-// --- ROTACIÓN DE 180° ENTRE LOMO Y PORTADA ---
+// --- GIRO DE 180° EXACTOS ENTRE LOMO Y PORTADA ---
 document.getElementById('btn-flip-book').addEventListener('click', () => {
     if (!currentInspectedBook) return;
     isFlipped = !isFlipped;
     
-    // Al dar clic alterna 180° completos para mostrar la portada frontal
-    const targetY = camera.rotation.y + (isFlipped ? 0 : Math.PI / 2);
+    // Gira 180° completos (Math.PI) para pasar del lomo a la portada
+    const targetY = camera.rotation.y + (isFlipped ? Math.PI : 0);
 
     gsap.to(currentInspectedBook.rotation, {
         y: targetY,
@@ -480,7 +480,7 @@ document.getElementById('form-book').addEventListener('submit', async (e) => {
     document.getElementById('form-book').reset();
 });
 
-// --- ELIMINAR LIBRO SEGURO DESDE INDEXEDDB ---
+// --- ELIMINAR LIBRO DESDE INDEXEDDB ---
 document.getElementById('btn-delete-book').addEventListener('click', async () => {
     if (!currentInspectedBook) return;
     const bookId = currentInspectedBook.userData.id;
