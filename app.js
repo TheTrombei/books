@@ -120,26 +120,21 @@ let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-// CÁLCULO CIENTÍFICO DE DISTANCIA DE CÁMARA PARA QUE NADA SE CORTE
-function getRequiredFocusZ() {
-    const aspect = window.innerWidth / window.innerHeight;
-    const shelfWidth = 6.2; // Ancho total del mueble más margen lateral de seguridad
-    const fovRad = (camera.fov * Math.PI) / 180;
-    
-    // Distancia Z mínima requerida para ver todo el ancho en horizontal
-    let requiredZ = (shelfWidth / 2) / (Math.tan(fovRad / 2) * aspect);
-    return Math.max(requiredZ, 5.6);
-}
-
+// CORRECCIÓN CLAVE: Ajustar dinámicamente el FOV según el aspecto horizontal/vertical
 function updateCameraFOV() {
     const aspect = window.innerWidth / window.innerHeight;
+    const targetWidth = currentSelectedShelf ? 6.4 : 20.0; // Ancho a encuadrar en unidades 3D
+    const targetHeight = 8.0;
+
+    // Calcular FOV horizontal vs vertical para que NADA se corte sin importar lo angosto que sea el celular
+    let hFovRad = 2 * Math.atan(Math.tan((45 * Math.PI / 180) / 2) * (16 / 9));
+    let vFovFromWidth = 2 * Math.atan(Math.tan(hFovRad / 2) / aspect) * (180 / Math.PI);
+    
     if (aspect < 1.0) {
-        camera.fov = 55;
-        // Vista general alejada en móviles verticales
-        camera.position.set(0, 3.8, 26.0);
+        // En pantallas verticales de celular (Portrait), expandir el campo de visión
+        camera.fov = Math.max(45, vFovFromWidth * 0.85);
     } else {
         camera.fov = 45;
-        camera.position.set(0, 3.6, 15.5);
     }
     camera.updateProjectionMatrix();
 }
@@ -387,7 +382,7 @@ document.getElementById('btn-next-shelf').addEventListener('pointerdown', (e) =>
     navigateShelf(1);
 });
 
-// ENCUADRE DE CÁMARA DINÁMICO RECALCULADO CON PRECISION MATEMÁTICA
+// ENCUADRE DE CÁMARA ADAPTATIVO MÓVIL
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
     currentShelfIndex = shelfGroup.userData.id;
@@ -396,8 +391,11 @@ function focusShelf(shelfGroup) {
     document.getElementById('btn-rename-shelf').classList.remove('hidden');
     document.getElementById('shelf-title-display').innerText = shelfNames[shelfGroup.userData.id];
 
-    // Calcula la distancia Z exacta que requiere la pantalla del teléfono actual
-    const targetZ = getRequiredFocusZ();
+    const aspect = window.innerWidth / window.innerHeight;
+    // En pantallas verticales de teléfono alejamos la cámara a z: 8.2 y ajustamos FOV
+    const targetZ = aspect < 1.0 ? 8.2 : 5.6;
+
+    updateCameraFOV();
 
     gsap.to(camera.position, {
         x: shelfGroup.userData.targetX,
@@ -416,11 +414,13 @@ document.getElementById('btn-reset-cam').addEventListener('pointerdown', (e) => 
     document.getElementById('btn-rename-shelf').classList.add('hidden');
     document.getElementById('shelf-title-display').innerText = "Biblioteca Virtual 3D";
 
-    const isPortrait = window.innerHeight > window.innerWidth;
+    const aspect = window.innerWidth / window.innerHeight;
+    updateCameraFOV();
+
     gsap.to(camera.position, {
         x: 0,
-        y: isPortrait ? 3.8 : 3.6,
-        z: isPortrait ? 26.0 : 15.5,
+        y: aspect < 1.0 ? 3.8 : 3.6,
+        z: aspect < 1.0 ? 22.0 : 15.5,
         duration: 1.2,
         ease: 'power2.inOut'
     });
