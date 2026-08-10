@@ -214,7 +214,7 @@ function updateShelfLabels() {
     });
 }
 
-// --- RENDERIZADO DE LIBROS ---
+// --- RENDERIZADO DE LIBROS (CON LECTURA DESDE GITHUB SI DB ESTÁ VACÍA) ---
 function loadTextureAsync(url) {
     return new Promise((resolve) => {
         if (!url) return resolve(null);
@@ -232,6 +232,25 @@ async function renderBooks() {
     bookMeshes.length = 0;
 
     booksData = await getAllBooksFromDB();
+
+    // Si no hay datos en IndexedDB local, intenta cargar data/books.json desde GitHub
+    if (booksData.length === 0) {
+        try {
+            const response = await fetch('data/books.json');
+            if (response.ok) {
+                const defaultBooks = await response.json();
+                if (Array.isArray(defaultBooks) && defaultBooks.length > 0) {
+                    for (const book of defaultBooks) {
+                        await saveBookToDB(book);
+                    }
+                    booksData = defaultBooks;
+                }
+            }
+        } catch (e) {
+            console.log("No hay archivo data/books.json alojado en el repositorio.");
+        }
+    }
+
     const shelfTrackers = {};
     const levelYArray = [0.72, 2.02, 3.32, 4.62, 5.92];
 
@@ -286,7 +305,7 @@ async function renderBooks() {
     }
 }
 
-// --- GESTIÓN UNIFICADA POINTER EVENTS (TOUCH & MOUSE) ---
+// --- INTERACCIÓN TOUCH/POINTER EVENTOS ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -303,7 +322,6 @@ renderer.domElement.addEventListener('pointerup', (e) => {
     const diffY = e.clientY - pointerDownY;
     const dist = Math.hypot(diffX, diffY);
 
-    // Gestos Deslizar Horizontal (Swipe)
     if (dist > 30 && Math.abs(diffX) > Math.abs(diffY) && !currentInspectedBook) {
         if (diffX < 0) {
             navigateShelf(1);
@@ -313,7 +331,6 @@ renderer.domElement.addEventListener('pointerup', (e) => {
         return;
     }
 
-    // Clic / Toque Puntual
     if (dist < 10) {
         process3DSelection(e.clientX, e.clientY);
     }
@@ -349,7 +366,6 @@ function navigateShelf(direction) {
     focusShelf(shelfGroups[currentShelfIndex]);
 }
 
-// Controles Botones UI
 document.getElementById('btn-prev-shelf').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     navigateShelf(-1);
@@ -454,14 +470,14 @@ document.getElementById('btn-close-inspect').addEventListener('pointerdown', (e)
     returnBookHome();
 });
 
-// --- EXPORTAR E IMPORTAR COLECCIÓN ENTRE DISPOSITIVOS ---
+// --- EXPORTAR E IMPORTAR COLECCIÓN JSON ---
 document.getElementById('btn-export').addEventListener('pointerdown', async (e) => {
     e.stopPropagation();
     const allBooks = await getAllBooksFromDB();
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allBooks));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "mis_libros_3d.json");
+    downloadAnchor.setAttribute("download", "books.json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
