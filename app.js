@@ -101,7 +101,7 @@ const WOOD_MAT = new THREE.MeshStandardMaterial({
     metalness: 0.05
 });
 
-const wallGeo = new THREE.PlaneGeometry(55, 30);
+const wallGeo = new THREE.PlaneGeometry(65, 35);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x24140a, roughness: 0.9 });
 const wallMesh = new THREE.Mesh(wallGeo, wallMat);
 wallMesh.position.set(0, 6, -1.5);
@@ -120,11 +120,23 @@ let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
+// CÁLCULO CIENTÍFICO DE DISTANCIA DE CÁMARA PARA QUE NADA SE CORTE
+function getRequiredFocusZ() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const shelfWidth = 6.2; // Ancho total del mueble más margen lateral de seguridad
+    const fovRad = (camera.fov * Math.PI) / 180;
+    
+    // Distancia Z mínima requerida para ver todo el ancho en horizontal
+    let requiredZ = (shelfWidth / 2) / (Math.tan(fovRad / 2) * aspect);
+    return Math.max(requiredZ, 5.6);
+}
+
 function updateCameraFOV() {
     const aspect = window.innerWidth / window.innerHeight;
     if (aspect < 1.0) {
-        camera.fov = 65;
-        camera.position.set(0, 3.8, 20.0);
+        camera.fov = 55;
+        // Vista general alejada en móviles verticales
+        camera.position.set(0, 3.8, 26.0);
     } else {
         camera.fov = 45;
         camera.position.set(0, 3.6, 15.5);
@@ -304,7 +316,7 @@ async function renderBooks() {
     }
 }
 
-// --- INTERACCIÓN POINTER EVENTS ---
+// --- INTERACCIÓN TOUCH/POINTER EVENTOS ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -375,7 +387,7 @@ document.getElementById('btn-next-shelf').addEventListener('pointerdown', (e) =>
     navigateShelf(1);
 });
 
-// ENCUADRE DE CÁMARA ADAPTATIVO AL ENFOCAR UNA ESTANTERÍA
+// ENCUADRE DE CÁMARA DINÁMICO RECALCULADO CON PRECISION MATEMÁTICA
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
     currentShelfIndex = shelfGroup.userData.id;
@@ -384,9 +396,8 @@ function focusShelf(shelfGroup) {
     document.getElementById('btn-rename-shelf').classList.remove('hidden');
     document.getElementById('shelf-title-display').innerText = shelfNames[shelfGroup.userData.id];
 
-    const isPortrait = window.innerHeight > window.innerWidth;
-    // Si la pantalla es vertical (móvil), alejamos la cámara a z: 8.5 para que quepa toda la repisa
-    const targetZ = isPortrait ? 8.5 : 5.6;
+    // Calcula la distancia Z exacta que requiere la pantalla del teléfono actual
+    const targetZ = getRequiredFocusZ();
 
     gsap.to(camera.position, {
         x: shelfGroup.userData.targetX,
@@ -409,7 +420,7 @@ document.getElementById('btn-reset-cam').addEventListener('pointerdown', (e) => 
     gsap.to(camera.position, {
         x: 0,
         y: isPortrait ? 3.8 : 3.6,
-        z: isPortrait ? 20.0 : 15.5,
+        z: isPortrait ? 26.0 : 15.5,
         duration: 1.2,
         ease: 'power2.inOut'
     });
