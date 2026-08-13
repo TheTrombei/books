@@ -49,7 +49,7 @@ function deleteBookFromDB(id) {
     });
 }
 
-// --- FUNCIÓN DE COMPRESIÓN REAL DE IMÁGENES BASE64 ---
+// --- COMPRESIÓN DE IMÁGENES ---
 function compressBase64(base64Str, maxWidth = 500, quality = 0.6) {
     return new Promise((resolve) => {
         if (!base64Str || !base64Str.startsWith('data:image')) {
@@ -152,47 +152,22 @@ let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-// CÁLCULO DE CÁMARA ADAPTATIVO EXACTO PARA PANTALLAS VERTICALES
-function getAdaptiveCameraParams(targetWidth) {
-    const aspect = window.innerWidth / window.innerHeight;
-    const defaultFov = 45;
-    
-    // Si la pantalla es más alta que ancha (Móvil vertical)
-    if (aspect < 1.0) {
-        // Calculamos la distancia Z requerida para que el ancho objetivo quepa completo
-        const fovRad = (defaultFov * Math.PI) / 180;
-        const requiredZ = (targetWidth / 2) / (Math.tan(fovRad / 2) * aspect);
-        return {
-            fov: defaultFov,
-            z: Math.max(requiredZ, 6.0),
-            y: 3.8
-        };
-    } else {
-        // Escritorio o pantalla horizontal
-        return {
-            fov: defaultFov,
-            z: targetWidth > 10 ? 15.5 : 5.6,
-            y: 3.6
-        };
-    }
+// ENCUADRE DE CÁMARA ESPECÍFICO PARA MÓVIL Y PC
+function isMobileView() {
+    return window.innerWidth / window.innerHeight < 1.0;
 }
 
 function resetCameraView() {
     gsap.killTweensOf(camera.position);
-    gsap.killTweensOf(camera);
-
-    const params = getAdaptiveCameraParams(21.0); // Ancho total de las 3 estanterías + margen
-
-    camera.fov = params.fov;
+    
+    if (isMobileView()) {
+        camera.fov = 60;
+        camera.position.set(0, 3.8, 22.0);
+    } else {
+        camera.fov = 45;
+        camera.position.set(0, 3.6, 15.5);
+    }
     camera.updateProjectionMatrix();
-
-    gsap.to(camera.position, {
-        x: 0,
-        y: params.y,
-        z: params.z,
-        duration: 1.2,
-        ease: 'power2.inOut'
-    });
 }
 
 // --- CARTELES DE TEXTO DE ESTANTERÍA ---
@@ -436,7 +411,7 @@ document.getElementById('btn-next-shelf').addEventListener('pointerdown', (e) =>
     navigateShelf(1);
 });
 
-// ENCUADRE DE CÁMARA CALCULADO PARA UNA ESTANTERÍA INDIVIDUAL (5.6 UNIDADES)
+// ENCUADRE DE CÁMARA AJUSTADO PARA MÓVIL (Z: 10.5 EN ENFOQUE)
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
     currentShelfIndex = shelfGroup.userData.id;
@@ -445,17 +420,19 @@ function focusShelf(shelfGroup) {
     document.getElementById('btn-rename-shelf').classList.remove('hidden');
     document.getElementById('shelf-title-display').innerText = shelfNames[shelfGroup.userData.id];
 
-    // Ancho de una estantería individual más margen
-    const params = getAdaptiveCameraParams(6.5);
+    const mobile = isMobileView();
+    const targetZ = mobile ? 10.5 : 5.6;
 
-    camera.fov = params.fov;
-    camera.updateProjectionMatrix();
+    if (mobile) {
+        camera.fov = 50;
+        camera.updateProjectionMatrix();
+    }
 
     gsap.killTweensOf(camera.position);
     gsap.to(camera.position, {
         x: shelfGroup.userData.targetX,
         y: shelfGroup.userData.targetY,
-        z: params.z,
+        z: targetZ,
         duration: 1.2,
         ease: 'power2.inOut'
     });
