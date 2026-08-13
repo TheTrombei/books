@@ -152,16 +152,47 @@ let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-// RESET COMPLETO DE POSICIÓN DE CÁMARA EN VISTA GENERAL
+// CÁLCULO DE CÁMARA ADAPTATIVO EXACTO PARA PANTALLAS VERTICALES
+function getAdaptiveCameraParams(targetWidth) {
+    const aspect = window.innerWidth / window.innerHeight;
+    const defaultFov = 45;
+    
+    // Si la pantalla es más alta que ancha (Móvil vertical)
+    if (aspect < 1.0) {
+        // Calculamos la distancia Z requerida para que el ancho objetivo quepa completo
+        const fovRad = (defaultFov * Math.PI) / 180;
+        const requiredZ = (targetWidth / 2) / (Math.tan(fovRad / 2) * aspect);
+        return {
+            fov: defaultFov,
+            z: Math.max(requiredZ, 6.0),
+            y: 3.8
+        };
+    } else {
+        // Escritorio o pantalla horizontal
+        return {
+            fov: defaultFov,
+            z: targetWidth > 10 ? 15.5 : 5.6,
+            y: 3.6
+        };
+    }
+}
+
 function resetCameraView() {
     gsap.killTweensOf(camera.position);
     gsap.killTweensOf(camera);
 
-    const aspect = window.innerWidth / window.innerHeight;
-    camera.fov = aspect < 1.0 ? 55 : 45;
+    const params = getAdaptiveCameraParams(21.0); // Ancho total de las 3 estanterías + margen
+
+    camera.fov = params.fov;
     camera.updateProjectionMatrix();
 
-    camera.position.set(0, aspect < 1.0 ? 3.8 : 3.6, aspect < 1.0 ? 26.0 : 15.5);
+    gsap.to(camera.position, {
+        x: 0,
+        y: params.y,
+        z: params.z,
+        duration: 1.2,
+        ease: 'power2.inOut'
+    });
 }
 
 // --- CARTELES DE TEXTO DE ESTANTERÍA ---
@@ -405,6 +436,7 @@ document.getElementById('btn-next-shelf').addEventListener('pointerdown', (e) =>
     navigateShelf(1);
 });
 
+// ENCUADRE DE CÁMARA CALCULADO PARA UNA ESTANTERÍA INDIVIDUAL (5.6 UNIDADES)
 function focusShelf(shelfGroup) {
     currentSelectedShelf = shelfGroup;
     currentShelfIndex = shelfGroup.userData.id;
@@ -413,19 +445,17 @@ function focusShelf(shelfGroup) {
     document.getElementById('btn-rename-shelf').classList.remove('hidden');
     document.getElementById('shelf-title-display').innerText = shelfNames[shelfGroup.userData.id];
 
-    const aspect = window.innerWidth / window.innerHeight;
-    const targetZ = aspect < 1.0 ? 8.2 : 5.6;
+    // Ancho de una estantería individual más margen
+    const params = getAdaptiveCameraParams(6.5);
 
-    if (aspect < 1.0) {
-        camera.fov = 55;
-        camera.updateProjectionMatrix();
-    }
+    camera.fov = params.fov;
+    camera.updateProjectionMatrix();
 
     gsap.killTweensOf(camera.position);
     gsap.to(camera.position, {
         x: shelfGroup.userData.targetX,
         y: shelfGroup.userData.targetY,
-        z: targetZ,
+        z: params.z,
         duration: 1.2,
         ease: 'power2.inOut'
     });
@@ -501,7 +531,7 @@ document.getElementById('btn-close-inspect').addEventListener('pointerdown', (e)
     returnBookHome();
 });
 
-// --- EXPORTAR E IMPORTAR CON COMPRESIÓN COMPLETA LOTE A LOTE ---
+// --- EXPORTAR E IMPORTAR ---
 document.getElementById('btn-export').addEventListener('pointerdown', async (e) => {
     e.stopPropagation();
     const btnExport = document.getElementById('btn-export');
@@ -552,7 +582,7 @@ document.getElementById('input-import-json').addEventListener('change', (e) => {
                     await saveBookToDB(book);
                 }
                 await renderBooks();
-                alert("¡Colección importada y comprimida con éxito!");
+                alert("¡Colección importada con éxito!");
             }
         } catch (err) {
             alert("El archivo JSON no es válido.");
@@ -684,12 +714,14 @@ function animate() {
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     renderer.setSize(window.innerWidth, window.innerHeight);
-    if (!currentSelectedShelf) {
+    if (currentSelectedShelf) {
+        focusShelf(currentSelectedShelf);
+    } else {
         resetCameraView();
     }
 });
 
-// Inicialización limpia
+// Inicialización
 (async () => {
     await initDB();
     initShelves();
