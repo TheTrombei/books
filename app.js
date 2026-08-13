@@ -49,11 +49,14 @@ function deleteBookFromDB(id) {
     });
 }
 
-// --- FUNCIÓN DE COMPRESIÓN DE IMÁGENES BASE64 ---
-function compressBase64Image(base64Str, maxWidth = 600, quality = 0.7) {
+// --- FUNCIÓN DE COMPRESIÓN REAL DE IMÁGENES BASE64 ---
+function compressBase64(base64Str, maxWidth = 500, quality = 0.6) {
     return new Promise((resolve) => {
-        if (!base64Str) resolve(null);
+        if (!base64Str || !base64Str.startsWith('data:image')) {
+            return resolve(base64Str);
+        }
         const img = new Image();
+        img.crossOrigin = 'Anonymous';
         img.onload = () => {
             const canvas = document.createElement('canvas');
             let width = img.width;
@@ -67,25 +70,14 @@ function compressBase64Image(base64Str, maxWidth = 600, quality = 0.7) {
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Exporta en JPEG ligero comprimido
             resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.onerror = () => resolve(base64Str);
         img.src = base64Str;
-    });
-}
-
-function compressFileImage(file, maxWidth = 600, quality = 0.7) {
-    return new Promise((resolve) => {
-        if (!file) resolve(null);
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const compressed = await compressBase64Image(e.target.result, maxWidth, quality);
-            resolve(compressed);
-        };
-        reader.readAsDataURL(file);
     });
 }
 
@@ -160,19 +152,17 @@ let currentSelectedShelf = null;
 let currentInspectedBook = null;
 let isFlipped = false;
 
-function setInitialCameraPosition() {
-    const aspect = window.innerWidth / window.innerHeight;
-    if (aspect < 1.0) {
-        camera.fov = 55;
-        camera.position.set(0, 3.8, 26.0);
-    } else {
-        camera.fov = 45;
-        camera.position.set(0, 3.6, 15.5);
-    }
-    camera.updateProjectionMatrix();
-}
+// RESET COMPLETO DE POSICIÓN DE CÁMARA EN VISTA GENERAL
+function resetCameraView() {
+    gsap.killTweensOf(camera.position);
+    gsap.killTweensOf(camera);
 
-setInitialCameraPosition();
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.fov = aspect < 1.0 ? 55 : 45;
+    camera.updateProjectionMatrix();
+
+    camera.position.set(0, aspect < 1.0 ? 3.8 : 3.6, aspect < 1.0 ? 26.0 : 15.5);
+}
 
 // --- CARTELES DE TEXTO DE ESTANTERÍA ---
 function createShelfLabelTexture(text) {
@@ -286,7 +276,7 @@ async function renderBooks() {
                 }
             }
         } catch (e) {
-            console.log("No hay archivo data/books.json alojado en el repositorio.");
+            console.log("No hay archivo data/books.json en el repositorio.");
         }
     }
 
@@ -449,18 +439,7 @@ document.getElementById('btn-reset-cam').addEventListener('pointerdown', (e) => 
     document.getElementById('btn-rename-shelf').classList.add('hidden');
     document.getElementById('shelf-title-display').innerText = "Biblioteca Virtual 3D";
 
-    const aspect = window.innerWidth / window.innerHeight;
-    camera.fov = aspect < 1.0 ? 55 : 45;
-    camera.updateProjectionMatrix();
-
-    gsap.killTweensOf(camera.position);
-    gsap.to(camera.position, {
-        x: 0,
-        y: aspect < 1.0 ? 3.8 : 3.6,
-        z: aspect < 1.0 ? 26.0 : 15.5,
-        duration: 1.2,
-        ease: 'power2.inOut'
-    });
+    resetCameraView();
 });
 
 // --- CENTRADO E INSPECCIÓN ---
@@ -522,24 +501,36 @@ document.getElementById('btn-close-inspect').addEventListener('pointerdown', (e)
     returnBookHome();
 });
 
-// --- EXPORTAR E IMPORTAR CON COMPRESIÓN AUTOMÁTICA ---
+// --- EXPORTAR E IMPORTAR CON COMPRESIÓN COMPLETA LOTE A LOTE ---
 document.getElementById('btn-export').addEventListener('pointerdown', async (e) => {
     e.stopPropagation();
+    const btnExport = document.getElementById('btn-export');
+    btnExport.innerText = "Comprimiendo...";
+    btnExport.disabled = true;
+
     const allBooks = await getAllBooksFromDB();
-    
-    // Comprime las imágenes Base64 de todos los libros existentes antes de exportar
+    const compressedBooks = [];
+
     for (const book of allBooks) {
-        if (book.coverImg) book.coverImg = await compressBase64Image(book.coverImg, 600, 0.7);
-        if (book.spineImg) book.spineImg = await compressBase64Image(book.spineImg, 300, 0.7);
+        const coverC = await compressBase64(book.coverImg, 500, 0.6);
+        const spineC = await compressBase64(book.spineImg, 250, 0.6);
+        compressedBooks.push({
+            ...book,
+            coverImg: coverC,
+            spineImg: spineC
+        });
     }
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allBooks));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(compressedBooks));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", "books.json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+
+    btnExport.innerText = "💾 Exportar";
+    btnExport.disabled = false;
 });
 
 document.getElementById('btn-import-trigger').addEventListener('pointerdown', (e) => {
@@ -555,14 +546,13 @@ document.getElementById('input-import-json').addEventListener('change', (e) => {
         try {
             const importedBooks = JSON.parse(event.target.result);
             if (Array.isArray(importedBooks)) {
-                // Comprime las imágenes de los libros importados
                 for (const book of importedBooks) {
-                    if (book.coverImg) book.coverImg = await compressBase64Image(book.coverImg, 600, 0.7);
-                    if (book.spineImg) book.spineImg = await compressBase64Image(book.spineImg, 300, 0.7);
+                    book.coverImg = await compressBase64(book.coverImg, 500, 0.6);
+                    book.spineImg = await compressBase64(book.spineImg, 250, 0.6);
                     await saveBookToDB(book);
                 }
                 await renderBooks();
-                alert("¡Colección importada y optimizada con éxito!");
+                alert("¡Colección importada y comprimida con éxito!");
             }
         } catch (err) {
             alert("El archivo JSON no es válido.");
@@ -597,7 +587,7 @@ function updateShelfDropdownOptions() {
     });
 }
 
-// --- PROCESAMIENTO DE IMÁGENES AL AGREGAR UN LIBRO NUEVO ---
+// --- PROCESAMIENTO DE IMÁGENES AL CREAR UN LIBRO ---
 function processSpineImage(file) {
     return new Promise((resolve) => {
         if (!file) resolve({ base64: null, thickness: 0.12 });
@@ -616,20 +606,31 @@ function processSpineImage(file) {
     });
 }
 
+function readFileAsBase64Raw(file) {
+    return new Promise((resolve) => {
+        if (!file) resolve(null);
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(file);
+    });
+}
+
 document.getElementById('form-book').onsubmit = async (e) => {
     e.preventDefault();
     const btnSubmit = document.getElementById('btn-submit-form');
     btnSubmit.disabled = true;
-    btnSubmit.innerText = "Comprimiendo y guardando...";
+    btnSubmit.innerText = "Guardando...";
 
     const spineFile = document.getElementById('input-spine-file').files[0];
     const coverFile = document.getElementById('input-cover-file').files[0];
 
     const spineData = await processSpineImage(spineFile);
-    
-    // Comprime automáticamente las imágenes
-    const spineImgCompressed = await compressFileImage(spineFile, 300, 0.7);
-    const coverImgCompressed = await compressFileImage(coverFile, 600, 0.7);
+
+    const rawSpine = await readFileAsBase64Raw(spineFile);
+    const rawCover = await readFileAsBase64Raw(coverFile);
+
+    const compressedSpine = await compressBase64(rawSpine, 250, 0.6);
+    const compressedCover = await compressBase64(rawCover, 500, 0.6);
 
     const newBook = {
         id: 'book_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -637,9 +638,9 @@ document.getElementById('form-book').onsubmit = async (e) => {
         author: document.getElementById('input-author').value,
         shelfIndex: parseInt(document.getElementById('select-shelf').value),
         levelIndex: parseInt(document.getElementById('select-level').value),
-        spineImg: spineImgCompressed,
+        spineImg: compressedSpine,
         spineThickness: spineData.thickness,
-        coverImg: coverImgCompressed
+        coverImg: compressedCover
     };
 
     await saveBookToDB(newBook);
@@ -684,14 +685,15 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     renderer.setSize(window.innerWidth, window.innerHeight);
     if (!currentSelectedShelf) {
-        setInitialCameraPosition();
+        resetCameraView();
     }
 });
 
-// Inicialización
+// Inicialización limpia
 (async () => {
     await initDB();
     initShelves();
+    resetCameraView();
     await renderBooks();
     animate();
 })();
